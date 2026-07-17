@@ -19,9 +19,14 @@ import {
   todayInTokyo,
 } from "@/lib/format-yen";
 import {
+  formatIdrInput,
+  parseIdrInput,
+} from "@/lib/format-idr";
+import {
   DateField,
   ErrorNote,
   Field,
+  IdrAmountField,
   PillTabs,
   PrimaryAction,
   SelectField,
@@ -56,6 +61,7 @@ export function EntrySheet({
   const editing = entry != null;
   const [kind, setKind] = useState<EntryKind>("expense");
   const [amountInput, setAmountInput] = useState("");
+  const [foreignAmountInput, setForeignAmountInput] = useState("");
   const [pocketId, setPocketId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [entryDate, setEntryDate] = useState(todayInTokyo());
@@ -77,6 +83,11 @@ export function EntrySheet({
     if (entry) {
       setKind(entry.kind);
       setAmountInput(formatYenInput(entry.amountYen));
+      setForeignAmountInput(
+        entry.foreignAmountIdr != null
+          ? formatIdrInput(entry.foreignAmountIdr)
+          : "",
+      );
       setPocketId(entry.pocketId);
       setCategoryId(entry.categoryId);
       setEntryDate(entry.entryDate);
@@ -84,6 +95,7 @@ export function EntrySheet({
     } else {
       setKind("expense");
       setAmountInput("");
+      setForeignAmountInput("");
       setPocketId(defaultPocketId(pockets, userId));
       setCategoryId(defaultCategoryId(categories, "expense"));
       setEntryDate(todayInTokyo());
@@ -103,9 +115,20 @@ export function EntrySheet({
 
   async function handleSave() {
     const amountYen = parseYenInput(amountInput);
+    const trimmedForeignInput = foreignAmountInput.trim();
+    const foreignAmountIdr = trimmedForeignInput
+      ? parseIdrInput(trimmedForeignInput)
+      : null;
+
+    if (trimmedForeignInput && foreignAmountIdr == null) {
+      setError("Enter a positive amount in IDR.");
+      return;
+    }
+
     const validationError = validateEntryDraft({
       kind,
       amountYen,
+      foreignAmountIdr,
       pocketId,
       categoryId,
       entryDate,
@@ -124,6 +147,7 @@ export function EntrySheet({
       const payload = {
         kind,
         amountYen: amountYen!,
+        foreignAmountIdr,
         pocketId,
         categoryId,
         entryDate,
@@ -200,6 +224,22 @@ export function EntrySheet({
               setAmountInput(formatYenInput(parsed));
             }
           }}
+        />
+      </Field>
+
+      <Field label="Foreign amount (IDR)">
+        <IdrAmountField
+          value={foreignAmountInput}
+          onChange={(value) =>
+            setForeignAmountInput(value.replace(/[^\dRp.,\s]/gi, ""))
+          }
+          onBlur={() => {
+            const parsed = parseIdrInput(foreignAmountInput);
+            if (parsed != null) {
+              setForeignAmountInput(formatIdrInput(parsed));
+            }
+          }}
+          disabled={busy}
         />
       </Field>
 

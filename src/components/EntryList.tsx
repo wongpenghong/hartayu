@@ -4,6 +4,7 @@ import { memberName } from "@/household/member-utils";
 import {
   entryAmountTone,
   formatEntryDate,
+  formatEntryForeignIdr,
   formatSignedEntryYen,
 } from "@/household/entry-display";
 import {
@@ -31,6 +32,7 @@ export function EntryList({
     <>
       {entries.map((entry) => {
         const canEdit = entry.memberId === currentUserId;
+        const foreignIdr = formatEntryForeignIdr(entry);
 
         return (
           <ListRow
@@ -46,6 +48,7 @@ export function EntryList({
               </span>
               <span className="mt-0.5 block truncate text-[13px] text-neutral-500">
                 {pocketNameById.get(entry.pocketId) ?? "Pocket"}
+                {foreignIdr ? ` · ${foreignIdr}` : ""}
                 {entry.note ? ` · ${entry.note}` : ""}
               </span>
               <span className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-neutral-400">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateEntryDraft } from "@/household/entry-form";
+import { formatIdrInput, parseIdrInput } from "@/lib/format-idr";
 import { formatYenInput, parseYenInput, todayInTokyo } from "@/lib/format-yen";
 
 describe("parseYenInput", () => {
@@ -30,10 +31,32 @@ describe("todayInTokyo", () => {
   });
 });
 
+describe("parseIdrInput", () => {
+  it("parses plain and formatted rupiah strings", () => {
+    expect(parseIdrInput("150000")).toBe(150_000);
+    expect(parseIdrInput("Rp150.000")).toBe(150_000);
+    expect(parseIdrInput(" 2.500.000 ")).toBe(2_500_000);
+  });
+
+  it("rejects empty, zero, decimal, and negative amounts", () => {
+    expect(parseIdrInput("")).toBeNull();
+    expect(parseIdrInput("0")).toBeNull();
+    expect(parseIdrInput("12.5")).toBeNull();
+    expect(parseIdrInput("-100")).toBeNull();
+  });
+});
+
+describe("formatIdrInput", () => {
+  it("formats integers with rupiah prefix", () => {
+    expect(formatIdrInput(150_000)).toBe("Rp150.000");
+  });
+});
+
 describe("validateEntryDraft", () => {
   const validDraft = {
     kind: "expense" as const,
     amountYen: 1500,
+    foreignAmountIdr: null,
     pocketId: "pocket-a",
     categoryId: "cat-a",
     entryDate: "2026-07-17",
@@ -42,6 +65,12 @@ describe("validateEntryDraft", () => {
 
   it("accepts a complete draft", () => {
     expect(validateEntryDraft(validDraft)).toBeNull();
+  });
+
+  it("accepts JPY with optional IDR", () => {
+    expect(
+      validateEntryDraft({ ...validDraft, foreignAmountIdr: 35_000_000 }),
+    ).toBeNull();
   });
 
   it("requires amount, pocket, category, and date", () => {
@@ -57,5 +86,24 @@ describe("validateEntryDraft", () => {
     expect(validateEntryDraft({ ...validDraft, entryDate: "" })).toMatch(
       /date/i,
     );
+  });
+
+  it("rejects invalid IDR when JPY is valid", () => {
+    expect(
+      validateEntryDraft({ ...validDraft, foreignAmountIdr: 0 }),
+    ).toMatch(/idr/i);
+    expect(
+      validateEntryDraft({ ...validDraft, foreignAmountIdr: -100 }),
+    ).toMatch(/idr/i);
+  });
+
+  it("rejects missing JPY even when IDR is present", () => {
+    expect(
+      validateEntryDraft({
+        ...validDraft,
+        amountYen: null,
+        foreignAmountIdr: 150_000,
+      }),
+    ).toMatch(/amount/i);
   });
 });

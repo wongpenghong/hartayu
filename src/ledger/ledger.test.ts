@@ -33,6 +33,7 @@ function entry(
   return {
     categoryId: "cat-a",
     memberId: "member-a",
+    foreignAmountIdr: null,
     note: null,
     createdAt: "2026-07-01T00:00:00Z",
     ...overrides,
@@ -313,6 +314,38 @@ describe("ledger", () => {
       { id: "2026-06", year: 2026, month: 6, totalYen: 200 },
       { id: "2026-07", year: 2026, month: 7, totalYen: 2_000 },
     ]);
+  });
+
+  it("ignores foreign amount IDR in JPY rollups", () => {
+    const jpyOnly: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 850,
+        entryDate: "2026-07-17",
+      }),
+    ];
+    const withIdr: Entry[] = [
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 850,
+        foreignAmountIdr: 35_000_000,
+        entryDate: "2026-07-17",
+      }),
+    ];
+
+    expect(householdBalance(withIdr, pockets)).toBe(
+      householdBalance(jpyOnly, pockets),
+    );
+    expect(monthlyTotals(withIdr, 2026, 7)).toEqual(
+      monthlyTotals(jpyOnly, 2026, 7),
+    );
+    expect(expenseTotalsByCategory(withIdr, 2026, 7)).toEqual(
+      expenseTotalsByCategory(jpyOnly, 2026, 7),
+    );
   });
 
   it("returns newest entries first", () => {

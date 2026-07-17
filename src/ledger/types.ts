@@ -7,6 +7,7 @@ export type Entry = {
   memberId: string;
   kind: EntryKind;
   amountYen: number;
+  foreignAmountIdr: number | null;
   entryDate: string;
   note: string | null;
   createdAt: string;

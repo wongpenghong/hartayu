@@ -1,4 +1,5 @@
 import type { Entry, EntryKind } from "@/ledger/types";
+import { formatIdr } from "@/lib/format-idr";
 import { formatYen } from "@/lib/format-yen";
 
 export function formatEntryDate(entryDate: string): string {
@@ -29,4 +30,14 @@ export function formatSignedEntryYen(entry: Pick<Entry, "kind" | "amountYen">): 
   return formatYen(
     entry.kind === "expense" ? -entry.amountYen : entry.amountYen,
   );
+}
+
+export function formatEntryForeignIdr(
+  entry: Pick<Entry, "foreignAmountIdr">,
+): string | null {
+  if (entry.foreignAmountIdr == null) {
+    return null;
+  }
+
+  return formatIdr(entry.foreignAmountIdr);
 }

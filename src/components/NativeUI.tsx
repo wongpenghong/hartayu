@@ -197,6 +197,31 @@ export function YenAmountField({
   );
 }
 
+export function IdrAmountField({
+  value,
+  onChange,
+  onBlur,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <input
+      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] font-medium tabular-nums outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      inputMode="numeric"
+      autoComplete="off"
+      placeholder="Rp0 (optional)"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={onBlur}
+      disabled={disabled}
+    />
+  );
+}
+
 export function DateField({
   value,
   onChange,

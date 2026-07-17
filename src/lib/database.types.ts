@@ -67,6 +67,7 @@ export type Database = {
           category_id: string;
           created_at: string;
           entry_date: string;
+          foreign_amount_idr: number | null;
           household_id: string;
           id: string;
           kind: "expense" | "income";
@@ -80,6 +81,7 @@ export type Database = {
           category_id: string;
           created_at?: string;
           entry_date: string;
+          foreign_amount_idr?: number | null;
           household_id: string;
           id?: string;
           kind: "expense" | "income";
@@ -93,6 +95,7 @@ export type Database = {
           category_id?: string;
           created_at?: string;
           entry_date?: string;
+          foreign_amount_idr?: number | null;
           household_id?: string;
           id?: string;
           kind?: "expense" | "income";

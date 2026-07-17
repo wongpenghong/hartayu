@@ -3,6 +3,7 @@ import type { EntryKind } from "@/ledger/types";
 export type EntryDraft = {
   kind: EntryKind;
   amountYen: number | null;
+  foreignAmountIdr: number | null;
   pocketId: string;
   categoryId: string;
   entryDate: string;
@@ -12,6 +13,13 @@ export type EntryDraft = {
 export function validateEntryDraft(draft: EntryDraft): string | null {
   if (draft.amountYen == null || draft.amountYen <= 0) {
     return "Enter a positive amount in yen.";
+  }
+
+  if (
+    draft.foreignAmountIdr != null &&
+    (!Number.isSafeInteger(draft.foreignAmountIdr) || draft.foreignAmountIdr <= 0)
+  ) {
+    return "Enter a positive amount in IDR.";
   }
 
   if (!draft.pocketId.trim()) {

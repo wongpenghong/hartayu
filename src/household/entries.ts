@@ -8,6 +8,7 @@ type EntryRow = {
   member_id: string;
   kind: EntryKind;
   amount_yen: number;
+  foreign_amount_idr: number | null;
   entry_date: string;
   note: string | null;
   created_at: string;
@@ -21,6 +22,7 @@ function mapEntry(row: EntryRow): Entry {
     memberId: row.member_id,
     kind: row.kind,
     amountYen: row.amount_yen,
+    foreignAmountIdr: row.foreign_amount_idr,
     entryDate: row.entry_date,
     note: row.note,
     createdAt: row.created_at,
@@ -28,7 +30,7 @@ function mapEntry(row: EntryRow): Entry {
 }
 
 const entrySelect =
-  "id, account_id, category_id, member_id, kind, amount_yen, entry_date, note, created_at";
+  "id, account_id, category_id, member_id, kind, amount_yen, foreign_amount_idr, entry_date, note, created_at";
 
 export async function fetchEntries(): Promise<Entry[]> {
   const supabase = getSupabase();
@@ -55,6 +57,7 @@ export async function createEntry(params: {
   memberId: string;
   kind: EntryKind;
   amountYen: number;
+  foreignAmountIdr?: number | null;
   pocketId: string;
   categoryId: string;
   entryDate: string;
@@ -69,6 +72,7 @@ export async function createEntry(params: {
       member_id: params.memberId,
       kind: params.kind,
       amount_yen: params.amountYen,
+      foreign_amount_idr: params.foreignAmountIdr ?? null,
       account_id: params.pocketId,
       category_id: params.categoryId,
       entry_date: params.entryDate,
@@ -89,6 +93,7 @@ export async function updateEntry(
   updates: {
     kind: EntryKind;
     amountYen: number;
+    foreignAmountIdr: number | null;
     pocketId: string;
     categoryId: string;
     entryDate: string;
@@ -102,6 +107,7 @@ export async function updateEntry(
     .update({
       kind: updates.kind,
       amount_yen: updates.amountYen,
+      foreign_amount_idr: updates.foreignAmountIdr,
       account_id: updates.pocketId,
       category_id: updates.categoryId,
       entry_date: updates.entryDate,
