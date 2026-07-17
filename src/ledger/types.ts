@@ -27,3 +27,16 @@ export type PocketBalance = {
   pocketId: string;
   balanceYen: number;
 };
+
+export type CategoryMonthlyTotal = {
+  categoryId: string;
+  kind: EntryKind;
+  totalYen: number;
+};
+
+export type EntryFilter = {
+  pocketId?: string;
+  categoryId?: string;
+  year?: number;
+  month?: number;
+};

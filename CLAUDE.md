@@ -11,3 +11,7 @@ Five canonical triage roles with default label strings. See `docs/agents/triage-
 ### Domain docs
 
 Single-context layout: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### UI workflow
+
+Layout boundaries, bottom nav, and NativeUI rules: `docs/agents/ui-workflow.md`. Project rule: `.cursor/rules/hartayu-ui.mdc`.

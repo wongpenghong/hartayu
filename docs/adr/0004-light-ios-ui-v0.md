@@ -7,3 +7,5 @@ Hartayu’s UI follows a light, iOS-inspired finance-app pattern: white cards on
 **Consequences:** Ticket #2’s dark shell is replaced on Home and Settings via shared `NativeUI` (grouped cards, pill tabs, bottom bar). Sign-in keeps the existing auth layout for now. Revisit dark mode once v0 is usable.
 
 **UI principles:** Clean, modern, uncluttered — generous spacing, rounded cards, subtle shadows, one primary action per screen. Add Entry opens as a sheet/modal with large amount input and picker rows (Date, Account, Category); optional Note instead of tag pills in v0.
+
+**Bottom nav (v0):** Home, Entries, center Add (+), Settings. Pockets and Categories are pill tabs inside Settings — not separate bottom tabs.

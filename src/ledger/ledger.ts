@@ -1,4 +1,11 @@
-import type { Entry, MonthlyTotals, Pocket, PocketBalance } from "./types";
+import type {
+  CategoryMonthlyTotal,
+  Entry,
+  EntryFilter,
+  MonthlyTotals,
+  Pocket,
+  PocketBalance,
+} from "./types";
 
 function entryDelta(entry: Entry): number {
   return entry.kind === "income" ? entry.amountYen : -entry.amountYen;
@@ -58,4 +65,47 @@ export function monthlyTotals(
     expenseYen,
     netYen: incomeYen - expenseYen,
   };
+}
+
+export function filterEntries(entries: Entry[], filter: EntryFilter): Entry[] {
+  return entries.filter((entry) => {
+    if (filter.pocketId && entry.pocketId !== filter.pocketId) {
+      return false;
+    }
+    if (filter.categoryId && entry.categoryId !== filter.categoryId) {
+      return false;
+    }
+    if (filter.year != null && filter.month != null) {
+      return entryInMonth(entry, filter.year, filter.month);
+    }
+    return true;
+  });
+}
+
+export function monthlyTotalsByCategory(
+  entries: Entry[],
+  year: number,
+  month: number,
+): CategoryMonthlyTotal[] {
+  const totals = new Map<string, CategoryMonthlyTotal>();
+
+  for (const entry of entries) {
+    if (!entryInMonth(entry, year, month)) {
+      continue;
+    }
+
+    const existing = totals.get(entry.categoryId);
+    if (existing) {
+      existing.totalYen += entry.amountYen;
+      continue;
+    }
+
+    totals.set(entry.categoryId, {
+      categoryId: entry.categoryId,
+      kind: entry.kind,
+      totalYen: entry.amountYen,
+    });
+  }
+
+  return [...totals.values()].sort((left, right) => right.totalYen - left.totalYen);
 }

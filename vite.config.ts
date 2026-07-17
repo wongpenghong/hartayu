@@ -16,8 +16,8 @@ export default defineConfig({
         name: "Hartayu",
         short_name: "Hartayu",
         description: "Household finance tracker",
-        theme_color: "#0f172a",
-        background_color: "#0f172a",
+        theme_color: "#f2f2f7",
+        background_color: "#f2f2f7",
         display: "standalone",
         start_url: "/",
         icons: [

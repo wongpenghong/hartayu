@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 
 export function NativeScaffold({ children }: { children: ReactNode }) {
@@ -153,19 +152,86 @@ export function TextField({
   onChange,
   placeholder,
   disabled,
+  className = "text-[17px]",
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  className?: string;
 }) {
   return (
     <input
-      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      className={`w-full rounded-xl bg-[#f2f2f7] px-3 py-3 outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50 ${className}`}
       type="text"
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
+      disabled={disabled}
+    />
+  );
+}
+
+export function YenAmountField({
+  value,
+  onChange,
+  onBlur,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <input
+      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[28px] font-semibold tabular-nums outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      inputMode="numeric"
+      autoComplete="off"
+      placeholder="¥0"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={onBlur}
+      disabled={disabled}
+    />
+  );
+}
+
+export function DateField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <input
+      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      type="date"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      disabled={disabled}
+    />
+  );
+}
+
+export function MonthField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <input
+      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      type="month"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
       disabled={disabled}
     />
   );
@@ -227,18 +293,25 @@ export function IconButton({
   label,
   onClick,
   disabled,
+  size = "md",
 }: {
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  size?: "md" | "lg";
 }) {
+  const sizeClass =
+    size === "lg"
+      ? "h-14 w-14 -mt-7 text-3xl shadow-lg"
+      : "h-11 w-11 text-2xl shadow-md";
+
   return (
     <button
       type="button"
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-11 w-11 items-center justify-center rounded-full bg-[#007aff] text-2xl leading-none text-white shadow-md disabled:bg-neutral-300"
+      className={`flex items-center justify-center rounded-full bg-[#007aff] leading-none text-white disabled:bg-neutral-300 ${sizeClass}`}
     >
       +
     </button>
@@ -290,46 +363,4 @@ export function MemberChip({ label }: { label: string }) {
       {label}
     </span>
   );
-}
-
-export function BottomTabBar({
-  onAddEntry,
-}: {
-  onAddEntry?: () => void;
-}) {
-  return (
-    <nav className="sticky bottom-0 border-t border-[#d1d1d6] bg-[#f9f9f9]/95 px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md">
-      <div className="grid grid-cols-3 items-end">
-        <TabItem label="Home" active />
-        <div className="-mt-5 flex justify-center">
-          <IconButton label="Add entry" onClick={onAddEntry} disabled={!onAddEntry} />
-        </div>
-        <TabItem label="Settings" to="/settings" />
-      </div>
-    </nav>
-  );
-}
-
-function TabItem({
-  label,
-  active,
-  to,
-}: {
-  label: string;
-  active?: boolean;
-  to?: string;
-}) {
-  const className = `block py-2 text-center text-[10px] font-medium ${
-    active ? "text-[#007aff]" : "text-neutral-500"
-  }`;
-
-  if (to) {
-    return (
-      <Link to={to} className={className}>
-        {label}
-      </Link>
-    );
-  }
-
-  return <span className={className}>{label}</span>;
 }

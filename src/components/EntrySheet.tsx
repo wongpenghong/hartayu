@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Category } from "@/household/categories";
+import {
+  categoriesForKind,
+  defaultCategoryId,
+} from "@/household/category-utils";
 import { validateEntryDraft } from "@/household/entry-form";
 import {
   createEntry,
   deleteEntry,
   updateEntry,
 } from "@/household/entries";
-import type { HouseholdMember } from "@/household/members";
 import type { Pocket } from "@/household/pockets";
+import { activePockets, defaultPocketId } from "@/household/pocket-utils";
 import type { Entry, EntryKind } from "@/ledger/types";
 import {
   formatYenInput,
@@ -15,6 +19,7 @@ import {
   todayInTokyo,
 } from "@/lib/format-yen";
 import {
+  DateField,
   ErrorNote,
   Field,
   PillTabs,
@@ -22,46 +27,20 @@ import {
   SelectField,
   SheetOverlay,
   TextField,
+  YenAmountField,
 } from "@/components/NativeUI";
 
 type EntrySheetProps = {
   open: boolean;
   onClose: () => void;
-  onSaved: (entry: Entry) => void;
-  onDeleted?: (entryId: string) => void;
+  onSaved: () => void;
+  onDeleted?: () => void;
   householdId: string;
   userId: string;
   entry: Entry | null;
   pockets: Pocket[];
   categories: Category[];
 };
-
-function activePockets(pockets: Pocket[]): Pocket[] {
-  return pockets.filter((pocket) => !pocket.archived_at);
-}
-
-function defaultPocketId(pockets: Pocket[], userId: string): string {
-  const active = activePockets(pockets);
-  return (
-    active.find((pocket) => pocket.primary_member_id === userId)?.id ??
-    active[0]?.id ??
-    ""
-  );
-}
-
-function defaultCategoryId(
-  categories: Category[],
-  kind: EntryKind,
-): string {
-  return categories.find((category) => category.kind === kind)?.id ?? "";
-}
-
-function categoriesForKind(
-  categories: Category[],
-  kind: EntryKind,
-): Category[] {
-  return categories.filter((category) => category.kind === kind);
-}
 
 export function EntrySheet({
   open,
@@ -151,15 +130,17 @@ export function EntrySheet({
         note,
       };
 
-      const saved = editing
-        ? await updateEntry(entry.id, payload)
-        : await createEntry({
-            householdId,
-            memberId: userId,
-            ...payload,
-          });
+      if (editing) {
+        await updateEntry(entry.id, payload);
+      } else {
+        await createEntry({
+          householdId,
+          memberId: userId,
+          ...payload,
+        });
+      }
 
-      onSaved(saved);
+      onSaved();
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to save entry");
@@ -178,7 +159,7 @@ export function EntrySheet({
 
     try {
       await deleteEntry(entry.id);
-      onDeleted?.(entry.id);
+      onDeleted?.();
       onClose();
     } catch (caught) {
       setError(
@@ -210,15 +191,9 @@ export function EntrySheet({
       />
 
       <Field label="Amount">
-        <input
-          className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[28px] font-semibold tabular-nums outline-none ring-[#007aff] focus:ring-2"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="¥0"
+        <YenAmountField
           value={amountInput}
-          onChange={(event) =>
-            setAmountInput(event.target.value.replace(/[^\d¥,\s]/g, ""))
-          }
+          onChange={(value) => setAmountInput(value.replace(/[^\d¥,\s]/g, ""))}
           onBlur={() => {
             const parsed = parseYenInput(amountInput);
             if (parsed != null) {
@@ -261,11 +236,9 @@ export function EntrySheet({
       </Field>
 
       <Field label="Date">
-        <input
-          className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] outline-none ring-[#007aff] focus:ring-2"
-          type="date"
+        <DateField
           value={entryDate}
-          onChange={(event) => setEntryDate(event.target.value)}
+          onChange={setEntryDate}
           disabled={busy}
         />
       </Field>
@@ -296,23 +269,4 @@ export function EntrySheet({
       ) : null}
     </SheetOverlay>
   );
-}
-
-export function memberNameForEntry(
-  members: HouseholdMember[],
-  memberId: string,
-): string {
-  return (
-    members.find((member) => member.user_id === memberId)?.username ?? "Member"
-  );
-}
-
-export function formatEntryDate(entryDate: string): string {
-  const [year, month, day] = entryDate.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
 }

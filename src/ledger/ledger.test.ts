@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   balanceForPocket,
   balancesByPocket,
+  filterEntries,
   householdBalance,
   monthlyTotals,
+  monthlyTotalsByCategory,
 } from "./ledger";
 import type { Entry, Pocket } from "./types";
 
@@ -139,5 +141,90 @@ describe("ledger", () => {
     ];
 
     expect(householdBalance(entries, pockets)).toBe(10_000);
+  });
+
+  it("filters entries by pocket, category, and month", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 1_000,
+        entryDate: "2026-07-01",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-b",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 2_000,
+        entryDate: "2026-07-02",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        categoryId: "cat-salary",
+        kind: "income",
+        amountYen: 300_000,
+        entryDate: "2026-06-30",
+      }),
+    ];
+
+    expect(filterEntries(entries, { pocketId: "pocket-a" })).toHaveLength(2);
+    expect(filterEntries(entries, { categoryId: "cat-food" })).toHaveLength(2);
+    expect(
+      filterEntries(entries, { year: 2026, month: 7, pocketId: "pocket-a" }),
+    ).toEqual([entries[0]]);
+  });
+
+  it("groups monthly totals by category", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 1_500,
+        entryDate: "2026-07-01",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 500,
+        entryDate: "2026-07-10",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-b",
+        categoryId: "cat-salary",
+        kind: "income",
+        amountYen: 400_000,
+        entryDate: "2026-07-05",
+      }),
+      entry({
+        id: "4",
+        pocketId: "pocket-a",
+        categoryId: "cat-rent",
+        kind: "expense",
+        amountYen: 80_000,
+        entryDate: "2026-06-30",
+      }),
+    ];
+
+    expect(monthlyTotalsByCategory(entries, 2026, 7)).toEqual([
+      {
+        categoryId: "cat-salary",
+        kind: "income",
+        totalYen: 400_000,
+      },
+      {
+        categoryId: "cat-food",
+        kind: "expense",
+        totalYen: 2_000,
+      },
+    ]);
   });
 });

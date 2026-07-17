@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import {
   createCategory,
@@ -7,6 +8,7 @@ import {
   type Category,
 } from "@/household/categories";
 import { fetchHouseholdMembers, type HouseholdMember } from "@/household/members";
+import { memberName } from "@/household/member-utils";
 import {
   archivePocket,
   createPocket,
@@ -15,6 +17,7 @@ import {
   updatePocket,
   type Pocket,
 } from "@/household/pockets";
+import { activePockets, archivedPockets } from "@/household/pocket-utils";
 import {
   CategoryIcon,
   EmptyState,
@@ -31,16 +34,6 @@ import {
   TextField,
 } from "@/components/NativeUI";
 import { SettingsShell, type SettingsTab } from "@/components/SettingsShell";
-
-function memberLabel(
-  members: HouseholdMember[],
-  userId: string | null,
-): string | null {
-  if (!userId) {
-    return null;
-  }
-  return members.find((member) => member.user_id === userId)?.username ?? null;
-}
 
 type PocketSheetMode =
   | { kind: "closed" }
@@ -70,8 +63,8 @@ function PocketsPanel({
   const [error, setError] = useState<string | null>(null);
   const { household } = useAuth();
 
-  const activePockets = pockets.filter((pocket) => !pocket.archived_at);
-  const archivedPockets = pockets.filter((pocket) => pocket.archived_at);
+  const visibleActivePockets = activePockets(pockets);
+  const visibleArchivedPockets = archivedPockets(pockets);
 
   function openAdd() {
     setName("");
@@ -168,11 +161,13 @@ function PocketsPanel({
       >
         {loading ? (
           <EmptyState message="Loading pockets…" />
-        ) : activePockets.length === 0 ? (
+        ) : visibleActivePockets.length === 0 ? (
           <EmptyState message="No pockets yet. Tap + to add one." />
         ) : (
-          activePockets.map((pocket) => {
-            const member = memberLabel(members, pocket.primary_member_id);
+          visibleActivePockets.map((pocket) => {
+            const member = pocket.primary_member_id
+              ? memberName(members, pocket.primary_member_id)
+              : null;
             return (
               <ListRow key={pocket.id} onClick={() => openEdit(pocket)}>
                 <PocketIcon name={pocket.name} />
@@ -193,9 +188,9 @@ function PocketsPanel({
         )}
       </GroupCard>
 
-      {archivedPockets.length > 0 ? (
+      {visibleArchivedPockets.length > 0 ? (
         <GroupCard title="Archived">
-          {archivedPockets.map((pocket) => (
+          {visibleArchivedPockets.map((pocket) => (
             <div
               key={pocket.id}
               className="flex items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0"
@@ -441,7 +436,10 @@ function CategoriesPanel({
 }
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<SettingsTab>("pockets");
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const tabParam = searchParams.get("tab");
+  const tab: SettingsTab = tabParam === "categories" ? "categories" : "pockets";
   const [pockets, setPockets] = useState<Pocket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
@@ -474,7 +472,12 @@ export default function SettingsPage() {
   }, [loadSettings]);
 
   return (
-    <SettingsShell activeTab={tab} onTabChange={setTab}>
+    <SettingsShell
+      activeTab={tab}
+      onTabChange={(nextTab) => {
+        navigate(`/settings?tab=${nextTab}`);
+      }}
+    >
       {pageError ? <ErrorNote message={pageError} /> : null}
       {tab === "pockets" ? (
         <PocketsPanel
