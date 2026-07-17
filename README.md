@@ -20,7 +20,25 @@ npm run dev
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and set Supabase values before ticket #3.
+Copy `.env.example` to `.env.local` and set Supabase values.
+
+Apply migrations to your Supabase project:
+
+```bash
+supabase db push
+```
+
+Or paste `supabase/migrations/20260717100000_initial_schema.sql` into the SQL editor.
+
+## Supabase integration tests
+
+Set `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` (server-side only), apply migrations, then:
+
+```bash
+npm test
+```
+
+RLS tests skip automatically when Supabase env vars are missing.
 
 ## Docs
 
