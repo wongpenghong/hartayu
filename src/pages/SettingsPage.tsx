@@ -1,0 +1,495 @@
+import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/auth/AuthProvider";
+import {
+  createCategory,
+  fetchCategories,
+  renameCategory,
+  type Category,
+} from "@/household/categories";
+import { fetchHouseholdMembers, type HouseholdMember } from "@/household/members";
+import {
+  archivePocket,
+  createPocket,
+  fetchPockets,
+  unarchivePocket,
+  updatePocket,
+  type Pocket,
+} from "@/household/pockets";
+import {
+  CategoryIcon,
+  EmptyState,
+  ErrorNote,
+  Field,
+  GroupCard,
+  IconButton,
+  ListRow,
+  MemberChip,
+  PocketIcon,
+  PrimaryAction,
+  SelectField,
+  SheetOverlay,
+  TextField,
+} from "@/components/NativeUI";
+import { SettingsShell, type SettingsTab } from "@/components/SettingsShell";
+
+function memberLabel(
+  members: HouseholdMember[],
+  userId: string | null,
+): string | null {
+  if (!userId) {
+    return null;
+  }
+  return members.find((member) => member.user_id === userId)?.username ?? null;
+}
+
+type PocketSheetMode =
+  | { kind: "closed" }
+  | { kind: "add" }
+  | { kind: "edit"; pocket: Pocket };
+
+type CategorySheetMode =
+  | { kind: "closed" }
+  | { kind: "add"; kindFilter: "expense" | "income" }
+  | { kind: "edit"; category: Category };
+
+function PocketsPanel({
+  pockets,
+  members,
+  loading,
+  onChange,
+}: {
+  pockets: Pocket[];
+  members: HouseholdMember[];
+  loading: boolean;
+  onChange: (pockets: Pocket[]) => void;
+}) {
+  const [sheet, setSheet] = useState<PocketSheetMode>({ kind: "closed" });
+  const [name, setName] = useState("");
+  const [primaryMemberId, setPrimaryMemberId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { household } = useAuth();
+
+  const activePockets = pockets.filter((pocket) => !pocket.archived_at);
+  const archivedPockets = pockets.filter((pocket) => pocket.archived_at);
+
+  function openAdd() {
+    setName("");
+    setPrimaryMemberId("");
+    setError(null);
+    setSheet({ kind: "add" });
+  }
+
+  function openEdit(pocket: Pocket) {
+    setName(pocket.name);
+    setPrimaryMemberId(pocket.primary_member_id ?? "");
+    setError(null);
+    setSheet({ kind: "edit", pocket });
+  }
+
+  function closeSheet() {
+    setSheet({ kind: "closed" });
+    setError(null);
+  }
+
+  async function handleSave() {
+    if (!household) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      if (sheet.kind === "add") {
+        const created = await createPocket(
+          household.id,
+          name,
+          primaryMemberId || null,
+        );
+        onChange([...pockets, created]);
+      } else if (sheet.kind === "edit") {
+        const updated = await updatePocket(sheet.pocket.id, {
+          name,
+          primary_member_id: primaryMemberId || null,
+        });
+        onChange(pockets.map((row) => (row.id === updated.id ? updated : row)));
+      }
+      closeSheet();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to save pocket");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleArchive() {
+    if (sheet.kind !== "edit") {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await archivePocket(sheet.pocket.id);
+      onChange(pockets.map((row) => (row.id === updated.id ? updated : row)));
+      closeSheet();
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Failed to archive pocket",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRestore(pocket: Pocket) {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await unarchivePocket(pocket.id);
+      onChange(pockets.map((row) => (row.id === updated.id ? updated : row)));
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Failed to restore pocket",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const sheetOpen = sheet.kind !== "closed";
+  const editingArchived = sheet.kind === "edit" && sheet.pocket.archived_at !== null;
+
+  return (
+    <>
+      <GroupCard
+        title="Active"
+        footer="Bank accounts, e-money, and cash. Archived pockets stay for entry history."
+      >
+        {loading ? (
+          <EmptyState message="Loading pockets…" />
+        ) : activePockets.length === 0 ? (
+          <EmptyState message="No pockets yet. Tap + to add one." />
+        ) : (
+          activePockets.map((pocket) => {
+            const member = memberLabel(members, pocket.primary_member_id);
+            return (
+              <ListRow key={pocket.id} onClick={() => openEdit(pocket)}>
+                <PocketIcon name={pocket.name} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[17px] font-medium">
+                    {pocket.name}
+                  </span>
+                  {member ? (
+                    <span className="mt-0.5 block text-[13px] text-neutral-500">
+                      Main member · {member}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="text-[20px] text-neutral-300">›</span>
+              </ListRow>
+            );
+          })
+        )}
+      </GroupCard>
+
+      {archivedPockets.length > 0 ? (
+        <GroupCard title="Archived">
+          {archivedPockets.map((pocket) => (
+            <div
+              key={pocket.id}
+              className="flex items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0"
+            >
+              <PocketIcon name={pocket.name} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[17px] text-neutral-500">{pocket.name}</p>
+                <p className="text-[13px] text-neutral-400">Hidden from active lists</p>
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handleRestore(pocket)}
+                className="text-[15px] font-medium text-[#007aff] disabled:opacity-50"
+              >
+                Restore
+              </button>
+            </div>
+          ))}
+        </GroupCard>
+      ) : null}
+
+      {error && !sheetOpen ? <ErrorNote message={error} /> : null}
+
+      <SheetOverlay
+        open={sheetOpen}
+        onClose={closeSheet}
+        title={sheet.kind === "add" ? "New pocket" : "Edit pocket"}
+      >
+        <Field label="Name">
+          <TextField
+            value={name}
+            onChange={setName}
+            placeholder="SMBC, PayPay, Shared cash"
+            disabled={editingArchived}
+          />
+        </Field>
+        <Field label="Main member">
+          <SelectField
+            value={primaryMemberId}
+            onChange={setPrimaryMemberId}
+            disabled={editingArchived}
+          >
+            <option value="">None</option>
+            {members.map((member) => (
+              <option key={member.user_id} value={member.user_id}>
+                {member.username}
+              </option>
+            ))}
+          </SelectField>
+        </Field>
+        {error ? <ErrorNote message={error} /> : null}
+        {!editingArchived ? (
+          <>
+            <PrimaryAction
+              disabled={busy || !name.trim()}
+              onClick={() => void handleSave()}
+            >
+              {busy ? "Saving…" : "Save"}
+            </PrimaryAction>
+            {sheet.kind === "edit" ? (
+              <PrimaryAction
+                variant="destructive"
+                disabled={busy}
+                onClick={() => void handleArchive()}
+              >
+                {busy ? "Archiving…" : "Archive pocket"}
+              </PrimaryAction>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-[14px] leading-relaxed text-neutral-500">
+            Archived pockets cannot be edited. Restore to make changes or use when
+            logging entries.
+          </p>
+        )}
+      </SheetOverlay>
+
+      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20">
+        <IconButton label="Add pocket" onClick={openAdd} />
+      </div>
+    </>
+  );
+}
+
+function CategoriesPanel({
+  categories,
+  loading,
+  onChange,
+}: {
+  categories: Category[];
+  loading: boolean;
+  onChange: (categories: Category[]) => void;
+}) {
+  const [kindFilter, setKindFilter] = useState<"expense" | "income">("expense");
+  const [sheet, setSheet] = useState<CategorySheetMode>({ kind: "closed" });
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { household } = useAuth();
+
+  const visible = categories.filter((category) => category.kind === kindFilter);
+
+  function openAdd() {
+    setName("");
+    setError(null);
+    setSheet({ kind: "add", kindFilter });
+  }
+
+  function openEdit(category: Category) {
+    if (category.is_starter) {
+      return;
+    }
+    setName(category.name);
+    setError(null);
+    setSheet({ kind: "edit", category });
+  }
+
+  function closeSheet() {
+    setSheet({ kind: "closed" });
+    setError(null);
+  }
+
+  async function handleSave() {
+    if (!household) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      if (sheet.kind === "add") {
+        const created = await createCategory(household.id, name, sheet.kindFilter);
+        onChange([...categories, created]);
+      } else if (sheet.kind === "edit") {
+        const updated = await renameCategory(sheet.category.id, name);
+        onChange(
+          categories.map((row) => (row.id === updated.id ? updated : row)),
+        );
+      }
+      closeSheet();
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Failed to save category",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const sheetOpen = sheet.kind !== "closed";
+
+  return (
+    <>
+      <div className="rounded-[10px] bg-[#e3e3e8] p-[3px]">
+        <div className="grid grid-cols-2 gap-[3px]">
+          {(
+            [
+              ["expense", "Expense"],
+              ["income", "Income"],
+            ] as const
+          ).map(([kind, label]) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => setKindFilter(kind)}
+              className={`rounded-[8px] py-2 text-[13px] font-semibold transition ${
+                kindFilter === kind
+                  ? "bg-white text-neutral-900 shadow-sm"
+                  : "text-neutral-500"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <GroupCard
+        footer={
+          kindFilter === "expense"
+            ? "Starter categories are fixed. Custom ones can be renamed."
+            : "Income starters stay fixed for stable reporting."
+        }
+      >
+        {loading ? (
+          <EmptyState message="Loading categories…" />
+        ) : visible.length === 0 ? (
+          <EmptyState message="No categories in this group." />
+        ) : (
+          visible.map((category) => (
+            <ListRow key={category.id} onClick={() => openEdit(category)}>
+              <CategoryIcon kind={category.kind} />
+              <span className="min-w-0 flex-1 truncate text-[17px] font-medium">
+                {category.name}
+              </span>
+              {category.is_starter ? (
+                <MemberChip label="Starter" />
+              ) : (
+                <span className="text-[20px] text-neutral-300">›</span>
+              )}
+            </ListRow>
+          ))
+        )}
+      </GroupCard>
+
+      {error && !sheetOpen ? <ErrorNote message={error} /> : null}
+
+      <SheetOverlay
+        open={sheetOpen}
+        onClose={closeSheet}
+        title={sheet.kind === "add" ? "New category" : "Rename category"}
+      >
+        {sheet.kind === "add" ? (
+          <p className="text-[14px] text-neutral-500">
+            Adding to{" "}
+            <span className="font-medium text-neutral-700">
+              {sheet.kindFilter === "expense" ? "Expense" : "Income"}
+            </span>
+          </p>
+        ) : null}
+        <Field label="Name">
+          <TextField
+            value={name}
+            onChange={setName}
+            placeholder="Subscriptions"
+          />
+        </Field>
+        {error ? <ErrorNote message={error} /> : null}
+        <PrimaryAction
+          disabled={busy || !name.trim()}
+          onClick={() => void handleSave()}
+        >
+          {busy ? "Saving…" : "Save"}
+        </PrimaryAction>
+      </SheetOverlay>
+
+      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20">
+        <IconButton label="Add category" onClick={openAdd} />
+      </div>
+    </>
+  );
+}
+
+export default function SettingsPage() {
+  const [tab, setTab] = useState<SettingsTab>("pockets");
+  const [pockets, setPockets] = useState<Pocket[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [members, setMembers] = useState<HouseholdMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
+
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    setPageError(null);
+    try {
+      const [nextPockets, nextCategories, nextMembers] = await Promise.all([
+        fetchPockets(),
+        fetchCategories(),
+        fetchHouseholdMembers(),
+      ]);
+      setPockets(nextPockets);
+      setCategories(nextCategories);
+      setMembers(nextMembers);
+    } catch (caught) {
+      setPageError(
+        caught instanceof Error ? caught.message : "Failed to load settings",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
+
+  return (
+    <SettingsShell activeTab={tab} onTabChange={setTab}>
+      {pageError ? <ErrorNote message={pageError} /> : null}
+      {tab === "pockets" ? (
+        <PocketsPanel
+          pockets={pockets}
+          members={members}
+          loading={loading}
+          onChange={setPockets}
+        />
+      ) : (
+        <CategoriesPanel
+          categories={categories}
+          loading={loading}
+          onChange={setCategories}
+        />
+      )}
+    </SettingsShell>
+  );
+}

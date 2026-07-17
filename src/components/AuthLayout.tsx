@@ -30,6 +30,9 @@ export function AuthField({
   label,
   type,
   autoComplete,
+  inputMode,
+  pattern,
+  maxLength,
   value,
   onChange,
   required,
@@ -38,6 +41,9 @@ export function AuthField({
   label: string;
   type: string;
   autoComplete?: string;
+  inputMode?: "numeric" | "text";
+  pattern?: string;
+  maxLength?: number;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
@@ -50,6 +56,9 @@ export function AuthField({
         className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-3 text-base outline-none ring-sky-500 focus:ring-2"
         type={type}
         autoComplete={autoComplete}
+        inputMode={inputMode}
+        pattern={pattern}
+        maxLength={maxLength}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}

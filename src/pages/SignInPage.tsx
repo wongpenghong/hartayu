@@ -1,13 +1,18 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import {
+  formatAuthError,
+  validatePin,
+  validateUsername,
+} from "@/auth/member-auth";
 import { AuthField, AuthShell } from "@/components/AuthLayout";
 
 export default function SignInPage() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -16,11 +21,19 @@ export default function SignInPage() {
     setSubmitting(true);
     setError(null);
 
+    const usernameError = validateUsername(username);
+    const pinError = validatePin(pin);
+    if (usernameError || pinError) {
+      setError(usernameError ?? pinError);
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      await signIn(email, password);
+      await signIn(username, pin);
       navigate("/", { replace: true });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Sign in failed");
+      setError(formatAuthError(caught));
     } finally {
       setSubmitting(false);
     }
@@ -29,31 +42,31 @@ export default function SignInPage() {
   return (
     <AuthShell
       title="Sign in"
-      subtitle="Access your shared household ledger."
+      subtitle="Enter your username and 6-digit PIN."
       footer={
         <p className="text-sm text-slate-400">
-          No account?{" "}
-          <Link className="text-sky-400" to="/sign-up">
-            Create one
-          </Link>
+          Members are created once via the household seed script.
         </p>
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         <AuthField
-          label="Email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={setEmail}
+          label="Username"
+          type="text"
+          autoComplete="username"
+          value={username}
+          onChange={setUsername}
           required
         />
         <AuthField
-          label="Password"
+          label="PIN"
           type="password"
           autoComplete="current-password"
-          value={password}
-          onChange={setPassword}
+          inputMode="numeric"
+          pattern="\d{6}"
+          maxLength={6}
+          value={pin}
+          onChange={(value) => setPin(value.replace(/\D/g, "").slice(0, 6))}
           required
         />
         {error ? <p className="text-sm text-rose-400">{error}</p> : null}

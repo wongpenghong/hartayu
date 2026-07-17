@@ -8,12 +8,13 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { getSupabase } from "@/lib/supabase";
 import {
-  bootstrapOwnerHousehold,
-  fetchHousehold,
-  fetchStarterCategories,
-} from "@/household/household";
+  formatAuthError,
+  memberEmail,
+  usernameFromEmail,
+} from "@/auth/member-auth";
+import { fetchHousehold, fetchStarterCategories } from "@/household/household";
+import { getSupabase } from "@/lib/supabase";
 
 type HouseholdSummary = {
   id: string;
@@ -23,12 +24,12 @@ type HouseholdSummary = {
 type AuthContextValue = {
   session: Session | null;
   user: User | null;
+  username: string | null;
   household: HouseholdSummary | null;
   starterCategoryCount: number;
   loading: boolean;
   authError: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signIn: (username: string, pin: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearAuthError: () => void;
 };
@@ -57,15 +58,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const refreshMemberContext = useCallback(async () => {
-    const context = await loadMemberContext();
-    setHousehold(context.household);
-    setStarterCategoryCount(context.starterCategoryCount);
+    try {
+      const context = await loadMemberContext();
+      setHousehold(context.household);
+      setStarterCategoryCount(context.starterCategoryCount);
+      if (!context.household) {
+        setAuthError(
+          "No household linked to this member. Run npm run seed:household -- <owner> <member> --fresh",
+        );
+      }
+    } catch (error) {
+      setAuthError(formatAuthError(error));
+      setHousehold(null);
+      setStarterCategoryCount(0);
+    }
   }, []);
-
-  const ensureHousehold = useCallback(async () => {
-    await bootstrapOwnerHousehold();
-    await refreshMemberContext();
-  }, [refreshMemberContext]);
 
   useEffect(() => {
     let active = true;
@@ -79,11 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
 
       if (data.session) {
-        try {
-          await ensureHousehold();
-        } catch (error) {
-          setAuthError(formatAuthError(error));
-        }
+        await refreshMemberContext();
       }
 
       if (active) {
@@ -101,13 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (nextSession) {
         setLoading(true);
-        try {
-          await ensureHousehold();
-        } catch (error) {
-          setAuthError(formatAuthError(error));
-        } finally {
-          setLoading(false);
-        }
+        await refreshMemberContext();
+        setLoading(false);
       } else {
         setHousehold(null);
         setStarterCategoryCount(0);
@@ -119,26 +117,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       subscription.unsubscribe();
     };
-  }, [ensureHousehold, supabase.auth]);
+  }, [refreshMemberContext, supabase.auth]);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (username: string, pin: string) => {
       setAuthError(null);
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: memberEmail(username),
+        password: pin,
       });
-      if (error) {
-        throw error;
-      }
-    },
-    [supabase.auth],
-  );
-
-  const signUp = useCallback(
-    async (email: string, password: string) => {
-      setAuthError(null);
-      const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
         throw error;
       }
@@ -158,12 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       user: session?.user ?? null,
+      username: usernameFromEmail(session?.user?.email),
       household,
       starterCategoryCount,
       loading,
       authError,
       signIn,
-      signUp,
       signOut,
       clearAuthError: () => setAuthError(null),
     }),
@@ -174,7 +161,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       signIn,
       signOut,
-      signUp,
       starterCategoryCount,
     ],
   );
@@ -188,11 +174,4 @@ export function useAuth(): AuthContextValue {
     throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
-}
-
-function formatAuthError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Something went wrong";
 }

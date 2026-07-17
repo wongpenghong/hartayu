@@ -2,13 +2,17 @@ export type EntryKind = "expense" | "income";
 
 export type Entry = {
   id: string;
-  accountId: string;
+  pocketId: string;
+  categoryId: string;
+  memberId: string;
   kind: EntryKind;
   amountYen: number;
   entryDate: string;
+  note: string | null;
+  createdAt: string;
 };
 
-export type Account = {
+export type Pocket = {
   id: string;
   archivedAt?: string | null;
 };
@@ -19,7 +23,7 @@ export type MonthlyTotals = {
   netYen: number;
 };
 
-export type AccountBalance = {
-  accountId: string;
+export type PocketBalance = {
+  pocketId: string;
   balanceYen: number;
 };

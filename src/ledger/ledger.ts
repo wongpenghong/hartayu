@@ -1,36 +1,30 @@
-import type { Account, AccountBalance, Entry, MonthlyTotals } from "./types";
+import type { Entry, MonthlyTotals, Pocket, PocketBalance } from "./types";
 
 function entryDelta(entry: Entry): number {
   return entry.kind === "income" ? entry.amountYen : -entry.amountYen;
 }
 
-export function balanceForAccount(
-  entries: Entry[],
-  accountId: string,
-): number {
+export function balanceForPocket(entries: Entry[], pocketId: string): number {
   return entries
-    .filter((entry) => entry.accountId === accountId)
+    .filter((entry) => entry.pocketId === pocketId)
     .reduce((total, entry) => total + entryDelta(entry), 0);
 }
 
-export function balancesByAccount(
+export function balancesByPocket(
   entries: Entry[],
-  accounts: Account[],
-): AccountBalance[] {
-  return accounts
-    .filter((account) => account.archivedAt == null)
-    .map((account) => ({
-      accountId: account.id,
-      balanceYen: balanceForAccount(entries, account.id),
+  pockets: Pocket[],
+): PocketBalance[] {
+  return pockets
+    .filter((pocket) => pocket.archivedAt == null)
+    .map((pocket) => ({
+      pocketId: pocket.id,
+      balanceYen: balanceForPocket(entries, pocket.id),
     }));
 }
 
-export function householdBalance(
-  entries: Entry[],
-  accounts: Account[],
-): number {
-  return balancesByAccount(entries, accounts).reduce(
-    (total, account) => total + account.balanceYen,
+export function householdBalance(entries: Entry[], pockets: Pocket[]): number {
+  return balancesByPocket(entries, pockets).reduce(
+    (total, pocket) => total + pocket.balanceYen,
     0,
   );
 }

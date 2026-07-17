@@ -169,6 +169,13 @@ export type Database = {
         Args: { household_name?: string };
         Returns: string;
       };
+      list_household_members: {
+        Args: Record<string, never>;
+        Returns: {
+          user_id: string;
+          username: string;
+        }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
