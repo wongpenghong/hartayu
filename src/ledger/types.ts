@@ -34,6 +34,16 @@ export type CategoryMonthlyTotal = {
   totalYen: number;
 };
 
+export type SegmentTotal = {
+  id: string;
+  totalYen: number;
+};
+
+export type MonthSegmentTotal = SegmentTotal & {
+  year: number;
+  month: number;
+};
+
 export type EntryFilter = {
   pocketId?: string;
   categoryId?: string;

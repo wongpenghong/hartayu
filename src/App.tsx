@@ -2,9 +2,10 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { RedirectIfAuthenticated, RequireAuth } from "@/auth/RouteGuards";
 import MainLayout from "@/components/MainLayout";
-import CategoriesPage from "@/pages/CategoriesPage";
+import AnalysisPage from "@/pages/AnalysisPage";
 import EntriesPage from "@/pages/EntriesPage";
 import HomePage from "@/pages/HomePage";
+import LimitsPage from "@/pages/LimitsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SignInPage from "@/pages/SignInPage";
 
@@ -18,8 +19,10 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/analysis" element={<AnalysisPage />} />
+            <Route path="/categories" element={<Navigate to="/analysis" replace />} />
             <Route path="/entries" element={<EntriesPage />} />
+            <Route path="/limits" element={<LimitsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>

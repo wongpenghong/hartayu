@@ -8,8 +8,8 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
   const { openAddEntry } = useEntrySheet();
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="pointer-events-auto grid w-full grid-cols-4 items-end rounded-[28px] bg-white px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md justify-center px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-auto grid w-full grid-cols-6 items-end rounded-[28px] bg-white px-1 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
         <NavTab
           to="/"
           label="Home"
@@ -17,10 +17,10 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
           icon={<HomeIcon active={location.pathname === "/"} />}
         />
         <NavTab
-          to="/entries"
-          label="Entries"
-          active={location.pathname === "/entries"}
-          icon={<EntriesIcon active={location.pathname === "/entries"} />}
+          to="/analysis"
+          label="Analysis"
+          active={location.pathname === "/analysis"}
+          icon={<AnalysisIcon active={location.pathname === "/analysis"} />}
         />
         <div className="flex justify-center">
           <IconButton
@@ -30,6 +30,18 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
             onClick={openAddEntry}
           />
         </div>
+        <NavTab
+          to="/entries"
+          label="Transactions"
+          active={location.pathname === "/entries"}
+          icon={<TransactionsIcon active={location.pathname === "/entries"} />}
+        />
+        <NavTab
+          to="/limits"
+          label="Limits"
+          active={location.pathname === "/limits"}
+          icon={<LimitsIcon active={location.pathname === "/limits"} />}
+        />
         <NavTab
           to="/settings"
           label="Settings"
@@ -55,13 +67,13 @@ function NavTab({
   return (
     <Link
       to={to}
-      className={`flex flex-col items-center gap-1 rounded-2xl px-2 py-1.5 ${
+      className={`flex flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 ${
         active ? "bg-[#ececee]" : ""
       }`}
     >
       {icon}
       <span
-        className={`text-[11px] font-medium ${
+        className={`text-[10px] font-medium leading-tight ${
           active ? "text-[#007aff]" : "text-neutral-900"
         }`}
       >
@@ -74,7 +86,7 @@ function NavTab({
 function HomeIcon({ active }: { active: boolean }) {
   const color = active ? "#007aff" : "#111827";
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z"
         stroke={color}
@@ -85,10 +97,10 @@ function HomeIcon({ active }: { active: boolean }) {
   );
 }
 
-function EntriesIcon({ active }: { active: boolean }) {
+function AnalysisIcon({ active }: { active: boolean }) {
   const color = active ? "#007aff" : "#111827";
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path d="M5 18V6" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
       <path d="M10 18V10" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
       <path d="M15 18V13" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
@@ -97,10 +109,53 @@ function EntriesIcon({ active }: { active: boolean }) {
   );
 }
 
+function TransactionsIcon({ active }: { active: boolean }) {
+  const color = active ? "#007aff" : "#111827";
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M7 8h10M7 12h10M7 16h6"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <rect
+        x="4"
+        y="5"
+        width="16"
+        height="14"
+        rx="2.5"
+        stroke={color}
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function LimitsIcon({ active }: { active: boolean }) {
+  const color = active ? "#007aff" : "#111827";
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M6 9h12v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9Z"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 9V7a3 3 0 0 1 6 0v2"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function SettingsIcon({ active }: { active: boolean }) {
   const color = active ? "#007aff" : "#111827";
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <circle cx="12" cy="8" r="3.2" stroke={color} strokeWidth="1.8" />
       <path
         d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6"

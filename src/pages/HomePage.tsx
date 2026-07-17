@@ -1,63 +1,102 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
+import { RecentTransactions } from "@/components/RecentTransactions";
+import {
+  SpendingTrendCard,
+  type SpendingPeriod,
+} from "@/components/SpendingTrendCard";
+import { categoryNameById } from "@/household/category-utils";
+import { fetchCategories } from "@/household/categories";
 import { fetchEntries } from "@/household/entries";
+import { fetchHouseholdMembers } from "@/household/members";
 import { fetchPockets } from "@/household/pockets";
-import { activePockets, pocketNameById, toLedgerPockets } from "@/household/pocket-utils";
+import { pocketNameById } from "@/household/pocket-utils";
 import { netTone } from "@/household/entry-display";
 import {
-  balancesByPocket,
-  householdBalance,
+  expenseTotalForDate,
+  expenseTotalForDateRange,
   monthlyTotals,
+  recentEntries,
+  trendPercent,
 } from "@/ledger/ledger";
-import {
-  CategoryIcon,
-  EmptyState,
-  ErrorNote,
-  GroupCard,
-  ListRow,
-  PocketIcon,
-} from "@/components/NativeUI";
+import { ErrorNote } from "@/components/NativeUI";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
-import { currentMonthInTokyo, formatYen } from "@/lib/format-yen";
+import {
+  currentMonthInTokyo,
+  currentWeekRangeInTokyo,
+  formatYen,
+  previousWeekRangeInTokyo,
+  todayInTokyo,
+  yesterdayInTokyo,
+} from "@/lib/format-yen";
 
 export default function HomePage() {
-  const { username, household, authError, signOut } = useAuth();
-  const { registerEntryChangeListener } = useEntrySheet();
+  const { username, household, user, authError, signOut } = useAuth();
+  const { openEditEntry, registerEntryChangeListener } = useEntrySheet();
   const [entries, setEntries] = useState<Awaited<ReturnType<typeof fetchEntries>>>([]);
   const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
+  const [categories, setCategories] = useState<
+    Awaited<ReturnType<typeof fetchCategories>>
+  >([]);
+  const [members, setMembers] = useState<
+    Awaited<ReturnType<typeof fetchHouseholdMembers>>
+  >([]);
+  const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>("daily");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const month = useMemo(() => currentMonthInTokyo(), []);
-  const ledgerPockets = useMemo(() => toLedgerPockets(pockets), [pockets]);
   const totals = useMemo(
     () => monthlyTotals(entries, month.year, month.month),
     [entries, month.month, month.year],
   );
-  const pocketBalances = useMemo(() => {
-    const names = pocketNameById(pockets);
-    return balancesByPocket(entries, ledgerPockets).map((balance) => ({
-      ...balance,
-      name: names.get(balance.pocketId) ?? "Pocket",
-    }));
-  }, [entries, ledgerPockets, pockets]);
-  const allTimeHouseholdBalance = useMemo(
-    () => householdBalance(entries, ledgerPockets),
-    [entries, ledgerPockets],
+  const categoriesById = useMemo(
+    () => categoryNameById(categories),
+    [categories],
   );
+  const pocketsById = useMemo(() => pocketNameById(pockets), [pockets]);
+  const recent = useMemo(() => recentEntries(entries, 5), [entries]);
+
+  const spending = useMemo(() => {
+    if (spendingPeriod === "daily") {
+      const today = todayInTokyo();
+      const yesterday = yesterdayInTokyo();
+      const current = expenseTotalForDate(entries, today);
+      const previous = expenseTotalForDate(entries, yesterday);
+      return { amountYen: current, trend: trendPercent(current, previous) };
+    }
+
+    const currentRange = currentWeekRangeInTokyo();
+    const previousRange = previousWeekRangeInTokyo();
+    const current = expenseTotalForDateRange(
+      entries,
+      currentRange.start,
+      currentRange.end,
+    );
+    const previous = expenseTotalForDateRange(
+      entries,
+      previousRange.start,
+      previousRange.end,
+    );
+    return { amountYen: current, trend: trendPercent(current, previous) };
+  }, [entries, spendingPeriod]);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [nextEntries, nextPockets] = await Promise.all([
-        fetchEntries(),
-        fetchPockets(),
-      ]);
+      const [nextEntries, nextPockets, nextCategories, nextMembers] =
+        await Promise.all([
+          fetchEntries(),
+          fetchPockets(),
+          fetchCategories(),
+          fetchHouseholdMembers(),
+        ]);
       setEntries(nextEntries);
       setPockets(nextPockets);
+      setCategories(nextCategories);
+      setMembers(nextMembers);
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load dashboard",
@@ -77,8 +116,6 @@ export default function HomePage() {
   ]);
 
   useRefreshOnFocus(loadDashboard);
-
-  const visiblePockets = activePockets(pockets);
 
   return (
     <>
@@ -109,6 +146,14 @@ export default function HomePage() {
         {authError ? <ErrorNote message={authError} /> : null}
         {loadError ? <ErrorNote message={loadError} /> : null}
 
+        <SpendingTrendCard
+          period={spendingPeriod}
+          onPeriodChange={setSpendingPeriod}
+          amountYen={spending.amountYen}
+          trendPercent={spending.trend}
+          loading={loading}
+        />
+
         <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
           <p className="text-[13px] font-medium uppercase tracking-wide text-neutral-500">
             Net this month
@@ -134,50 +179,19 @@ export default function HomePage() {
           </div>
         </section>
 
-        <GroupCard title="Categories">
-          <Link to="/categories" className="block">
-            <ListRow>
-              <CategoryIcon kind="expense" />
-              <span className="min-w-0 flex-1 text-[17px] font-medium">
-                View this month&apos;s breakdown
-              </span>
-              <span className="text-[20px] text-neutral-300">›</span>
-            </ListRow>
-          </Link>
-        </GroupCard>
-
-        <GroupCard
-          title="Pockets"
-          footer={`All-time household balance across active pockets: ${formatYen(allTimeHouseholdBalance)}`}
-        >
-          {loading ? (
-            <EmptyState message="Loading pockets…" />
-          ) : visiblePockets.length === 0 ? (
-            <div className="px-4 py-6 text-center">
-              <p className="text-[15px] text-neutral-500">No pockets yet.</p>
-              <Link
-                to="/settings"
-                className="mt-2 inline-block text-[15px] font-medium text-[#007aff]"
-              >
-                Add pockets in Settings
-              </Link>
-            </div>
-          ) : (
-            pocketBalances.map((pocket) => (
-              <ListRow key={pocket.pocketId}>
-                <PocketIcon name={pocket.name} />
-                <span className="min-w-0 flex-1 truncate text-[17px] font-medium">
-                  {pocket.name}
-                </span>
-                <span
-                  className={`text-[17px] font-semibold tabular-nums ${netTone(pocket.balanceYen)}`}
-                >
-                  {formatYen(pocket.balanceYen)}
-                </span>
-              </ListRow>
-            ))
-          )}
-        </GroupCard>
+        <RecentTransactions
+          entries={recent}
+          members={members}
+          categoryNameById={categoriesById}
+          pocketNameById={pocketsById}
+          currentUserId={user?.id}
+          onEditEntry={(entry) => {
+            if (entry.memberId === user?.id) {
+              openEditEntry(entry);
+            }
+          }}
+          loading={loading}
+        />
       </main>
     </>
   );

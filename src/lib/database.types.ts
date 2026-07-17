@@ -39,6 +39,7 @@ export type Database = {
           id: string;
           is_starter: boolean;
           kind: "expense" | "income";
+          monthly_limit_yen: number | null;
           name: string;
         };
         Insert: {
@@ -46,6 +47,7 @@ export type Database = {
           id?: string;
           is_starter?: boolean;
           kind: "expense" | "income";
+          monthly_limit_yen?: number | null;
           name: string;
         };
         Update: {
@@ -53,6 +55,7 @@ export type Database = {
           id?: string;
           is_starter?: boolean;
           kind?: "expense" | "income";
+          monthly_limit_yen?: number | null;
           name?: string;
         };
         Relationships: [];

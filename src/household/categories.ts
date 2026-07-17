@@ -6,6 +6,7 @@ export type Category = {
   name: string;
   kind: "expense" | "income";
   is_starter: boolean;
+  monthly_limit_yen: number | null;
 };
 
 export function validateCategoryName(name: string): string | null {
@@ -19,11 +20,21 @@ export function validateCategoryName(name: string): string | null {
   return null;
 }
 
+export function validateCategoryLimit(limitYen: number | null): string | null {
+  if (limitYen == null) {
+    return null;
+  }
+  if (!Number.isSafeInteger(limitYen) || limitYen <= 0) {
+    return "Limit must be a positive whole yen amount.";
+  }
+  return null;
+}
+
 export async function fetchCategories(): Promise<Category[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, household_id, name, kind, is_starter")
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
     .order("kind")
     .order("is_starter", { ascending: false })
     .order("name");
@@ -54,7 +65,7 @@ export async function createCategory(
       kind,
       is_starter: false,
     })
-    .select("id, household_id, name, kind, is_starter")
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
     .single();
 
   if (error || !data) {
@@ -79,11 +90,35 @@ export async function renameCategory(
     .update({ name: name.trim() })
     .eq("id", categoryId)
     .eq("is_starter", false)
-    .select("id, household_id, name, kind, is_starter")
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
     .single();
 
   if (error || !data) {
     throw error ?? new Error("Failed to rename category");
+  }
+
+  return data;
+}
+
+export async function updateCategoryLimit(
+  categoryId: string,
+  monthlyLimitYen: number | null,
+): Promise<Category> {
+  const limitError = validateCategoryLimit(monthlyLimitYen);
+  if (limitError) {
+    throw new Error(limitError);
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("categories")
+    .update({ monthly_limit_yen: monthlyLimitYen })
+    .eq("id", categoryId)
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error("Failed to update category limit");
   }
 
   return data;

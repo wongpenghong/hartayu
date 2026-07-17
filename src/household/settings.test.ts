@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validatePocketName } from "@/household/pockets";
-import { validateCategoryName } from "@/household/categories";
+import { validateCategoryName, validateCategoryLimit } from "@/household/categories";
 
 describe("validatePocketName", () => {
   it("rejects empty names", () => {
@@ -19,5 +19,16 @@ describe("validateCategoryName", () => {
 
   it("accepts valid names", () => {
     expect(validateCategoryName("Subscriptions")).toBeNull();
+  });
+});
+
+describe("validateCategoryLimit", () => {
+  it("accepts null and positive yen", () => {
+    expect(validateCategoryLimit(null)).toBeNull();
+    expect(validateCategoryLimit(50_000)).toBeNull();
+  });
+
+  it("rejects non-positive limits", () => {
+    expect(validateCategoryLimit(0)).toBe("Limit must be a positive whole yen amount.");
   });
 });

@@ -2,10 +2,18 @@ import { describe, expect, it } from "vitest";
 import {
   balanceForPocket,
   balancesByPocket,
+  expenseTotalForDate,
+  expenseTotalForDateRange,
+  expenseTotalsByCategory,
+  expenseTotalsByMember,
+  expenseTotalsByPocket,
+  expenseTotalsByRecentMonths,
   filterEntries,
   householdBalance,
   monthlyTotals,
   monthlyTotalsByCategory,
+  recentEntries,
+  trendPercent,
 } from "./ledger";
 import type { Entry, Pocket } from "./types";
 
@@ -226,5 +234,115 @@ describe("ledger", () => {
         totalYen: 2_000,
       },
     ]);
+  });
+
+  it("sums daily and weekly spending with trend", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 1_000,
+        entryDate: "2026-07-17",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 500,
+        entryDate: "2026-07-16",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 300,
+        entryDate: "2026-07-14",
+      }),
+    ];
+
+    expect(expenseTotalForDate(entries, "2026-07-17")).toBe(1_000);
+    expect(
+      expenseTotalForDateRange(entries, "2026-07-14", "2026-07-17"),
+    ).toBe(1_800);
+    expect(trendPercent(1_000, 500)).toBe(100);
+    expect(trendPercent(0, 0)).toBe(0);
+    expect(trendPercent(100, 0)).toBeNull();
+  });
+
+  it("builds expense breakdown segments", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 800,
+        entryDate: "2026-07-01",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-b",
+        categoryId: "cat-rent",
+        kind: "expense",
+        amountYen: 1_200,
+        entryDate: "2026-07-02",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 200,
+        entryDate: "2026-06-01",
+      }),
+    ];
+
+    expect(expenseTotalsByCategory(entries, 2026, 7)).toEqual([
+      { id: "cat-rent", totalYen: 1_200 },
+      { id: "cat-food", totalYen: 800 },
+    ]);
+    expect(expenseTotalsByPocket(entries, 2026, 7)).toEqual([
+      { id: "pocket-b", totalYen: 1_200 },
+      { id: "pocket-a", totalYen: 800 },
+    ]);
+    expect(expenseTotalsByMember(entries, 2026, 7)).toEqual([
+      { id: "member-a", totalYen: 2_000 },
+    ]);
+    expect(expenseTotalsByRecentMonths(entries, 2026, 7, 2)).toEqual([
+      { id: "2026-06", year: 2026, month: 6, totalYen: 200 },
+      { id: "2026-07", year: 2026, month: 7, totalYen: 2_000 },
+    ]);
+  });
+
+  it("returns newest entries first", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 100,
+        entryDate: "2026-07-01",
+        createdAt: "2026-07-01T10:00:00Z",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 200,
+        entryDate: "2026-07-02",
+        createdAt: "2026-07-02T10:00:00Z",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 300,
+        entryDate: "2026-07-02",
+        createdAt: "2026-07-02T12:00:00Z",
+      }),
+    ];
+
+    expect(recentEntries(entries, 2).map((row) => row.id)).toEqual(["3", "2"]);
   });
 });

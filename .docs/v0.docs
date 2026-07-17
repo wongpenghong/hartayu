@@ -1,0 +1,21 @@
+When all v0 tickets are done — do this in order:
+
+1. Ship checklist (real usage)
+
+ Two phones: sign up → invite wife → both add Entries
+
+ PWA: Add to Home Screen (iOS + Android)
+
+ Home: net, accounts, donut, recent list
+
+ RLS: second household can’t see your data
+ 
+2. Deploy (ADR-0005)
+Push to GitHub → connect Vercel
+Set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+Supabase Auth → add production URL to redirect allowlist
+Run migrations on prod Supabase if not already
+3. Close the loop
+Close #7 and optionally #1 (spec delivered)
+Tick .docs/01-project-vision.md success criteria
+Commit/push anything still local (.docs/, ADRs, etc.)

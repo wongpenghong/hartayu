@@ -74,10 +74,10 @@ export default function EntriesPage() {
     <>
       <header className="px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <h1 className="text-[34px] font-bold leading-tight tracking-tight">
-          Entries
+          Transactions
         </h1>
         <p className="mt-1 text-[15px] text-neutral-500">
-          Newest first. Tap yours to edit.
+          Full history. Tap yours to edit.
         </p>
       </header>
 

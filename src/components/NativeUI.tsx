@@ -364,3 +364,22 @@ export function MemberChip({ label }: { label: string }) {
     </span>
   );
 }
+
+export function LimitProgressBar({
+  spentYen,
+  limitYen,
+}: {
+  spentYen: number;
+  limitYen: number;
+}) {
+  const ratio = limitYen > 0 ? Math.min(spentYen / limitYen, 1) : 0;
+
+  return (
+    <div className="relative h-2 overflow-hidden rounded-full bg-[#e8f5c4]">
+      <div
+        className="h-full rounded-full bg-neutral-900 transition-all"
+        style={{ width: `${ratio * 100}%` }}
+      />
+    </div>
+  );
+}

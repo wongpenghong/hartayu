@@ -51,3 +51,79 @@ export function currentMonthInTokyo(now = new Date()): {
 
   return { year, month, label };
 }
+
+function parseCalendarDate(date: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
+function formatCalendarDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export function addCalendarDays(date: string, days: number): string {
+  const next = parseCalendarDate(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return formatCalendarDate(next);
+}
+
+export function yesterdayInTokyo(now = new Date()): string {
+  return addCalendarDays(todayInTokyo(now), -1);
+}
+
+export function weekdayIndex(date: string): number {
+  return parseCalendarDate(date).getUTCDay();
+}
+
+export function weekStartForDate(date: string): string {
+  const weekday = weekdayIndex(date);
+  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+  return addCalendarDays(date, mondayOffset);
+}
+
+export function currentWeekRangeInTokyo(now = new Date()): {
+  start: string;
+  end: string;
+} {
+  const end = todayInTokyo(now);
+  return { start: weekStartForDate(end), end };
+}
+
+export function previousWeekRangeInTokyo(now = new Date()): {
+  start: string;
+  end: string;
+} {
+  const end = todayInTokyo(now);
+  const thisWeekStart = weekStartForDate(end);
+  const previousEnd = addCalendarDays(thisWeekStart, -1);
+  return { start: weekStartForDate(previousEnd), end: previousEnd };
+}
+
+export function shiftMonth(
+  year: number,
+  month: number,
+  delta: number,
+): { year: number; month: number } {
+  const next = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1 };
+}
+
+export function formatMonthLabel(year: number, month: number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+export function formatYenCompact(amountYen: number): string {
+  if (amountYen >= 10_000) {
+    const man = amountYen / 10_000;
+    return `¥${Number.isInteger(man) ? man : man.toFixed(1)}万`;
+  }
+  if (amountYen >= 1_000) {
+    const kilo = amountYen / 1_000;
+    return `¥${Number.isInteger(kilo) ? kilo : kilo.toFixed(1)}K`;
+  }
+  return formatYen(amountYen);
+}
