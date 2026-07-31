@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { AssetClassesPanel } from "@/components/AssetClassesPanel";
+import { BillsPanel } from "@/components/BillsPanel";
 import { GoalsPanel } from "@/components/GoalsPanel";
 import { fetchAssetClasses, type AssetClass } from "@/household/asset-classes";
 import {
@@ -12,6 +13,7 @@ import {
   type Category,
 } from "@/household/categories";
 import { fetchGoalContributions, fetchGoals } from "@/household/goals";
+import { fetchBills } from "@/household/bills";
 import { fetchHouseholdMembers, type HouseholdMember } from "@/household/members";
 import { memberName } from "@/household/member-utils";
 import {
@@ -41,6 +43,7 @@ import {
 } from "@/components/NativeUI";
 import { SettingsShell, type SettingsTab } from "@/components/SettingsShell";
 import { useTheme } from "@/theme/ThemeProvider";
+import type { Bill } from "@/ledger/types";
 
 type PocketSheetMode =
   | { kind: "closed" }
@@ -482,12 +485,15 @@ export default function SettingsPage() {
       ? "categories"
       : tabParam === "goals"
         ? "goals"
-        : tabParam === "asset-classes"
-          ? "asset-classes"
-          : "pockets";
+        : tabParam === "bills"
+          ? "bills"
+          : tabParam === "asset-classes"
+            ? "asset-classes"
+            : "pockets";
   const [pockets, setPockets] = useState<Pocket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
   const [goals, setGoals] = useState<Awaited<ReturnType<typeof fetchGoals>>>([]);
   const [contributions, setContributions] = useState<
     Awaited<ReturnType<typeof fetchGoalContributions>>
@@ -507,6 +513,7 @@ export default function SettingsPage() {
         nextGoals,
         nextContributions,
         nextAssetClasses,
+        nextBills,
       ] = await Promise.all([
         fetchPockets(),
         fetchCategories(),
@@ -514,6 +521,7 @@ export default function SettingsPage() {
         fetchGoals(),
         fetchGoalContributions(),
         fetchAssetClasses(),
+        fetchBills(),
       ]);
       setPockets(nextPockets);
       setCategories(nextCategories);
@@ -521,6 +529,7 @@ export default function SettingsPage() {
       setMembers(nextMembers);
       setGoals(nextGoals);
       setContributions(nextContributions);
+      setBills(nextBills);
     } catch (caught) {
       setPageError(
         caught instanceof Error ? caught.message : "Failed to load settings",
@@ -576,6 +585,15 @@ export default function SettingsPage() {
           assetClasses={assetClasses}
           loading={loading}
           onChange={setAssetClasses}
+        />
+      ) : tab === "bills" ? (
+        <BillsPanel
+          bills={bills}
+          categories={categories}
+          pockets={pockets}
+          members={members}
+          loading={loading}
+          onChange={setBills}
         />
       ) : (
         <GoalsPanel

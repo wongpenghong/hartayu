@@ -8,6 +8,7 @@ type EntryRow = {
   category_id: string | null;
   member_id: string;
   attributed_member_id: string | null;
+  bill_id: string | null;
   kind: EntryKind;
   amount_yen: number;
   foreign_amount_idr: number | null;
@@ -24,6 +25,7 @@ function mapEntry(row: EntryRow): Entry {
     categoryId: row.category_id,
     memberId: row.member_id,
     attributedMemberId: row.attributed_member_id,
+    billId: row.bill_id,
     kind: row.kind,
     amountYen: row.amount_yen,
     foreignAmountIdr: row.foreign_amount_idr,
@@ -34,7 +36,7 @@ function mapEntry(row: EntryRow): Entry {
 }
 
 const entrySelect =
-  "id, account_id, to_account_id, category_id, member_id, attributed_member_id, kind, amount_yen, foreign_amount_idr, entry_date, note, created_at";
+  "id, account_id, to_account_id, category_id, member_id, attributed_member_id, bill_id, kind, amount_yen, foreign_amount_idr, entry_date, note, created_at";
 
 export async function fetchEntries(): Promise<Entry[]> {
   const supabase = getSupabase();
@@ -67,6 +69,7 @@ export async function createEntry(params: {
   categoryId: string;
   entryDate: string;
   note?: string | null;
+  billId?: string | null;
 }): Promise<Entry> {
   const supabase = getSupabase();
 
@@ -83,6 +86,7 @@ export async function createEntry(params: {
       category_id: params.categoryId,
       entry_date: params.entryDate,
       note: normalizeNote(params.note),
+      bill_id: params.billId ?? null,
     })
     .select(entrySelect)
     .single();

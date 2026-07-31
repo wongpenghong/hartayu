@@ -10,6 +10,12 @@ export type EntryDraft = {
   note: string;
 };
 
+export type EntryDraftPrefill = Partial<
+  Omit<EntryDraft, "foreignAmountIdr"> & {
+    attribution: string;
+  }
+>;
+
 export type TransferDraft = {
   amountYen: number | null;
   fromPocketId: string;

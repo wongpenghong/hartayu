@@ -8,12 +8,19 @@ import {
 } from "react";
 import { EntrySheet } from "@/components/EntrySheet";
 import type { Category } from "@/household/categories";
+import type { EntryDraftPrefill } from "@/household/entry-form";
 import type { HouseholdMember } from "@/household/members";
 import type { Pocket } from "@/household/pockets";
 import type { Entry } from "@/ledger/types";
 
+type OpenAddEntryOptions = {
+  draft?: EntryDraftPrefill;
+  billId?: string;
+};
+
 type EntrySheetContextValue = {
   openAddEntry: () => void;
+  openAddEntryWithDraft: (draft: EntryDraftPrefill, options?: OpenAddEntryOptions) => void;
   openEditEntry: (entry: Entry) => void;
   notifyEntryChanged: () => void;
   registerEntryChangeListener: (listener: () => void) => () => void;
@@ -42,6 +49,8 @@ export function EntrySheetProvider({
 }) {
   const [open, setOpen] = useState(false);
   const [entry, setEntry] = useState<Entry | null>(null);
+  const [draft, setDraft] = useState<EntryDraftPrefill | null>(null);
+  const [billId, setBillId] = useState<string | null>(null);
   const [listeners, setListeners] = useState<Set<() => void>>(() => new Set());
 
   const notifyEntryChanged = useCallback(() => {
@@ -62,27 +71,50 @@ export function EntrySheetProvider({
 
   const openAddEntry = useCallback(() => {
     setEntry(null);
+    setDraft(null);
+    setBillId(null);
     setOpen(true);
   }, []);
 
+  const openAddEntryWithDraft = useCallback(
+    (nextDraft: EntryDraftPrefill, options?: OpenAddEntryOptions) => {
+      setEntry(null);
+      setDraft(nextDraft);
+      setBillId(options?.billId ?? null);
+      setOpen(true);
+    },
+    [],
+  );
+
   const openEditEntry = useCallback((nextEntry: Entry) => {
     setEntry(nextEntry);
+    setDraft(null);
+    setBillId(null);
     setOpen(true);
   }, []);
 
   const closeSheet = useCallback(() => {
     setOpen(false);
     setEntry(null);
+    setDraft(null);
+    setBillId(null);
   }, []);
 
   const value = useMemo(
     () => ({
       openAddEntry,
+      openAddEntryWithDraft,
       openEditEntry,
       notifyEntryChanged,
       registerEntryChangeListener,
     }),
-    [notifyEntryChanged, openAddEntry, openEditEntry, registerEntryChangeListener],
+    [
+      notifyEntryChanged,
+      openAddEntry,
+      openAddEntryWithDraft,
+      openEditEntry,
+      registerEntryChangeListener,
+    ],
   );
 
   return (
@@ -97,6 +129,8 @@ export function EntrySheetProvider({
         userId={userId}
         members={members}
         entry={entry}
+        draft={draft}
+        billId={billId}
         pockets={pockets}
         categories={categories}
         entries={entries}

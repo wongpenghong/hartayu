@@ -7,11 +7,25 @@ export type Entry = {
   categoryId: string | null;
   memberId: string;
   attributedMemberId: string | null;
+  billId: string | null;
   kind: EntryKind;
   amountYen: number;
   foreignAmountIdr: number | null;
   entryDate: string;
   note: string | null;
+  createdAt: string;
+};
+
+export type Bill = {
+  id: string;
+  name: string;
+  amountYen: number | null;
+  dueDay: number;
+  categoryId: string;
+  defaultPocketId: string | null;
+  defaultAttributedMemberId: string | null;
+  lastPaidPeriod: string | null;
+  isActive: boolean;
   createdAt: string;
 };
 

@@ -14,6 +14,7 @@ function entry(
     categoryId: "cat-a",
     memberId: "member-a",
     attributedMemberId: "member-a",
+    billId: null,
     foreignAmountIdr: null,
     note: null,
     createdAt: "2026-07-01T00:00:00Z",

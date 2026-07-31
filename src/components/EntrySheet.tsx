@@ -14,6 +14,7 @@ import {
 import {
   validateEntryDraft,
   validateTransferDraft,
+  type EntryDraftPrefill,
 } from "@/household/entry-form";
 import {
   expensePocketBalanceWarning,
@@ -27,6 +28,7 @@ import {
   updateEntry,
   updateTransfer,
 } from "@/household/entries";
+import { markBillPaid } from "@/household/bills";
 import type { Pocket } from "@/household/pockets";
 import { activePockets, defaultPocketId } from "@/household/pocket-utils";
 import type { Entry, EntryKind } from "@/ledger/types";
@@ -66,6 +68,8 @@ type EntrySheetProps = {
   userId: string;
   members: HouseholdMember[];
   entry: Entry | null;
+  draft?: EntryDraftPrefill | null;
+  billId?: string | null;
   pockets: Pocket[];
   categories: Category[];
   entries: Entry[];
@@ -80,6 +84,8 @@ export function EntrySheet({
   userId,
   members,
   entry,
+  draft = null,
+  billId = null,
   pockets,
   categories,
   entries,
@@ -148,22 +154,27 @@ export function EntrySheet({
       setNote(entry.note ?? "");
       setAttribution(attributionPickerValue(entry, userId));
     } else {
-      setKind("expense");
-      setAmountInput("");
+      setKind(draft?.kind ?? "expense");
+      setAmountInput(
+        draft?.amountYen != null ? formatYenDigits(draft.amountYen) : "",
+      );
       setForeignAmountInput("");
       const defaultPocket = defaultPocketId(pockets, userId);
-      setPocketId(defaultPocket);
+      setPocketId(draft?.pocketId ?? defaultPocket);
       setToPocketId(
-        visiblePockets.find((pocket) => pocket.id !== defaultPocket)?.id ?? "",
+        visiblePockets.find((pocket) => pocket.id !== (draft?.pocketId ?? defaultPocket))
+          ?.id ?? "",
       );
-      setCategoryId(defaultCategoryId(categories, "expense"));
-      setEntryDate(todayInTokyo());
-      setNote("");
-      setAttribution(userId);
+      setCategoryId(
+        draft?.categoryId ?? defaultCategoryId(categories, draft?.kind ?? "expense"),
+      );
+      setEntryDate(draft?.entryDate ?? todayInTokyo());
+      setNote(draft?.note ?? "");
+      setAttribution(draft?.attribution ?? userId);
     }
 
     setError(null);
-  }, [categories, entry, open, pockets, userId, visiblePockets]);
+  }, [categories, draft, entry, open, pockets, userId, visiblePockets]);
 
   const destinationPockets = visiblePockets.filter((pocket) => pocket.id !== pocketId);
   const pocketBalanceById = useMemo(() => {
@@ -348,8 +359,12 @@ export function EntrySheet({
         await createEntry({
           householdId,
           memberId: userId,
+          billId,
           ...payload,
         });
+        if (billId) {
+          await markBillPaid(billId);
+        }
       }
 
       onSaved();

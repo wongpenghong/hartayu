@@ -57,6 +57,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      bills: {
+        Row: {
+          amount_yen: number | null;
+          category_id: string;
+          created_at: string;
+          default_attributed_member_id: string | null;
+          default_pocket_id: string | null;
+          due_day: number;
+          household_id: string;
+          id: string;
+          is_active: boolean;
+          last_paid_period: string | null;
+          name: string;
+        };
+        Insert: {
+          amount_yen?: number | null;
+          category_id: string;
+          created_at?: string;
+          default_attributed_member_id?: string | null;
+          default_pocket_id?: string | null;
+          due_day: number;
+          household_id: string;
+          id?: string;
+          is_active?: boolean;
+          last_paid_period?: string | null;
+          name: string;
+        };
+        Update: {
+          amount_yen?: number | null;
+          category_id?: string;
+          created_at?: string;
+          default_attributed_member_id?: string | null;
+          default_pocket_id?: string | null;
+          due_day?: number;
+          household_id?: string;
+          id?: string;
+          is_active?: boolean;
+          last_paid_period?: string | null;
+          name?: string;
+        };
+        Relationships: [];
+      };
       categories: {
         Row: {
           emoji: string | null;
@@ -91,6 +133,7 @@ export type Database = {
         Row: {
           account_id: string;
           amount_yen: number;
+          bill_id: string | null;
           category_id: string | null;
           created_at: string;
           entry_date: string;
@@ -108,6 +151,7 @@ export type Database = {
           account_id: string;
           amount_yen: number;
           attributed_member_id?: string | null;
+          bill_id?: string | null;
           category_id?: string | null;
           created_at?: string;
           entry_date: string;
@@ -124,6 +168,7 @@ export type Database = {
           account_id?: string;
           amount_yen?: number;
           attributed_member_id?: string | null;
+          bill_id?: string | null;
           category_id?: string | null;
           created_at?: string;
           entry_date?: string;

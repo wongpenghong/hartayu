@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
+import { BillsDueSummary } from "@/components/BillsDueSummary";
 import { ExpenseBreakdownCard } from "@/components/ExpenseBreakdownCard";
 import { RemainingBudgetSummary } from "@/components/RemainingBudgetSummary";
 import {
@@ -11,10 +12,18 @@ import { PocketsSummary } from "@/components/PocketsSummary";
 import { GoalsSummary } from "@/components/GoalsSummary";
 import { categoryNameById } from "@/household/category-utils";
 import { fetchCategories } from "@/household/categories";
+import {
+  billAttributionPickerValue,
+  billPayNote,
+  currentPeriodInTokyo,
+  fetchBills,
+  markBillPaid,
+  unpaidBillsForPeriod,
+} from "@/household/bills";
 import { fetchEntries } from "@/household/entries";
 import { fetchGoalContributions, fetchGoals } from "@/household/goals";
 import { fetchPockets } from "@/household/pockets";
-import { activePockets, toLedgerPockets } from "@/household/pocket-utils";
+import { activePockets, defaultPocketId, toLedgerPockets } from "@/household/pocket-utils";
 import { netTone } from "@/household/entry-display";
 import {
   balancesByPocket,
@@ -24,6 +33,7 @@ import {
   remainingBudgetByCategory,
   trendPercent,
 } from "@/ledger/ledger";
+import type { Bill } from "@/ledger/types";
 import { ErrorNote } from "@/components/NativeUI";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import {
@@ -36,8 +46,8 @@ import {
 } from "@/lib/format-yen";
 
 export default function HomePage() {
-  const { username, household, authError, signOut } = useAuth();
-  const { registerEntryChangeListener } = useEntrySheet();
+  const { username, household, user, authError, signOut } = useAuth();
+  const { openAddEntryWithDraft, registerEntryChangeListener } = useEntrySheet();
   const [entries, setEntries] = useState<Awaited<ReturnType<typeof fetchEntries>>>([]);
   const [categories, setCategories] = useState<
     Awaited<ReturnType<typeof fetchCategories>>
@@ -47,11 +57,18 @@ export default function HomePage() {
     Awaited<ReturnType<typeof fetchGoalContributions>>
   >([]);
   const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [busyBillId, setBusyBillId] = useState<string | null>(null);
   const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>("daily");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const month = useMemo(() => currentMonthInTokyo(), []);
+  const currentPeriod = useMemo(() => currentPeriodInTokyo(), []);
+  const unpaidBills = useMemo(
+    () => unpaidBillsForPeriod(bills, currentPeriod),
+    [bills, currentPeriod],
+  );
   const totals = useMemo(
     () => monthlyTotals(entries, month.year, month.month),
     [entries, month.month, month.year],
@@ -98,19 +115,21 @@ export default function HomePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [nextEntries, nextCategories, nextGoals, nextContributions, nextPockets] =
+      const [nextEntries, nextCategories, nextGoals, nextContributions, nextPockets, nextBills] =
         await Promise.all([
           fetchEntries(),
           fetchCategories(),
           fetchGoals(),
           fetchGoalContributions(),
           fetchPockets(),
+          fetchBills(),
         ]);
       setEntries(nextEntries);
       setCategories(nextCategories);
       setGoals(nextGoals);
       setContributions(nextContributions);
       setPockets(nextPockets);
+      setBills(nextBills);
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load dashboard",
@@ -130,6 +149,40 @@ export default function HomePage() {
   ]);
 
   useRefreshOnFocus(loadDashboard);
+
+  function handlePayBill(bill: Bill) {
+    if (!user) {
+      return;
+    }
+
+    openAddEntryWithDraft(
+      {
+        kind: "expense",
+        categoryId: bill.categoryId,
+        amountYen: bill.amountYen ?? undefined,
+        pocketId: bill.defaultPocketId ?? defaultPocketId(pockets, user.id),
+        note: billPayNote(bill.name, month.year, month.month),
+        attribution: billAttributionPickerValue(bill, user.id),
+      },
+      { billId: bill.id },
+    );
+  }
+
+  async function handleAlreadyLogged(bill: Bill) {
+    setBusyBillId(bill.id);
+    try {
+      const updated = await markBillPaid(bill.id, currentPeriod);
+      setBills((current) =>
+        current.map((row) => (row.id === updated.id ? updated : row)),
+      );
+    } catch (caught) {
+      setLoadError(
+        caught instanceof Error ? caught.message : "Failed to mark bill paid",
+      );
+    } finally {
+      setBusyBillId(null);
+    }
+  }
 
   return (
     <>
@@ -192,6 +245,15 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        <BillsDueSummary
+          bills={unpaidBills}
+          categories={categories}
+          loading={loading}
+          onPay={handlePayBill}
+          onAlreadyLogged={(bill) => void handleAlreadyLogged(bill)}
+          busyBillId={busyBillId}
+        />
 
         <PocketsSummary
           pockets={activePocketList}
