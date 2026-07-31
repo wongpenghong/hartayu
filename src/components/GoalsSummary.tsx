@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { Goal, GoalContribution } from "@/ledger/types";
 import { progressByGoal } from "@/household/goal-display";
 import { formatYen } from "@/lib/format-yen";
@@ -29,7 +30,19 @@ export function GoalsSummary({
   const goalById = new Map(goals.map((goal) => [goal.id, goal]));
 
   return (
-    <GroupCard title="Savings goals">
+    <section>
+      <div className="mb-2 flex items-center justify-between px-4">
+        <h2 className="text-[13px] font-normal uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+          Savings goals
+        </h2>
+        <Link
+          to="/goals"
+          className="text-[13px] font-medium text-[#007aff] active:opacity-60"
+        >
+          View all
+        </Link>
+      </div>
+      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
       {rows.map((row) => {
         const goal = goalById.get(row.goalId);
         if (!goal) {
@@ -62,6 +75,7 @@ export function GoalsSummary({
           </div>
         );
       })}
-    </GroupCard>
+      </div>
+    </section>
   );
 }

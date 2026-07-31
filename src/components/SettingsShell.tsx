@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { PillTabs } from "@/components/NativeUI";
 
-export type SettingsTab = "pockets" | "categories" | "goals" | "asset-classes" | "bills";
+export type SettingsTab = "pockets" | "categories" | "asset-classes" | "bills";
 
 export function SettingsShell({
   activeTab,
@@ -26,7 +26,6 @@ export function SettingsShell({
               { value: "pockets", label: "Pockets" },
               { value: "categories", label: "Categories" },
               { value: "bills", label: "Bills" },
-              { value: "goals", label: "Goals" },
               { value: "asset-classes", label: "Assets" },
             ]}
           />

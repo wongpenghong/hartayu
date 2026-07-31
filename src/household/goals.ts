@@ -224,7 +224,7 @@ export async function deleteGoal(goalId: string): Promise<void> {
   }
 }
 
-export async function createGoalContribution(params: {
+async function insertGoalContribution(params: {
   householdId: string;
   goalId: string;
   memberId: string;
@@ -232,11 +232,6 @@ export async function createGoalContribution(params: {
   contributionDate: string;
   note?: string | null;
 }): Promise<GoalContribution> {
-  const amountError = validateContributionAmount(params.amountYen);
-  if (amountError) {
-    throw new Error(amountError);
-  }
-
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("goal_contributions")
@@ -252,10 +247,45 @@ export async function createGoalContribution(params: {
     .single();
 
   if (error || !data) {
-    throw error ?? new Error("Failed to add contribution");
+    throw error ?? new Error("Failed to save contribution");
   }
 
   return mapContribution(data);
+}
+
+export async function createGoalContribution(params: {
+  householdId: string;
+  goalId: string;
+  memberId: string;
+  amountYen: number;
+  contributionDate: string;
+  note?: string | null;
+}): Promise<GoalContribution> {
+  const amountError = validateContributionAmount(params.amountYen);
+  if (amountError) {
+    throw new Error(amountError);
+  }
+
+  return insertGoalContribution(params);
+}
+
+export async function createGoalWithdrawal(params: {
+  householdId: string;
+  goalId: string;
+  memberId: string;
+  amountYen: number;
+  contributionDate: string;
+  note?: string | null;
+}): Promise<GoalContribution> {
+  const amountError = validateContributionAmount(params.amountYen);
+  if (amountError) {
+    throw new Error(amountError);
+  }
+
+  return insertGoalContribution({
+    ...params,
+    amountYen: -params.amountYen,
+  });
 }
 
 export async function deleteGoalContribution(contributionId: string): Promise<void> {

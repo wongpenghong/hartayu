@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
 import { AssetClassesPanel } from "@/components/AssetClassesPanel";
 import { BillsPanel } from "@/components/BillsPanel";
-import { GoalsPanel } from "@/components/GoalsPanel";
 import { fetchAssetClasses, type AssetClass } from "@/household/asset-classes";
 import {
   createCategory,
@@ -14,7 +13,6 @@ import {
   type Category,
 } from "@/household/categories";
 import { type BudgetGroup, BUDGET_GROUP_LABELS, BUDGET_GROUP_ORDER } from "@/household/budget-groups";
-import { fetchGoalContributions, fetchGoals } from "@/household/goals";
 import { fetchBills } from "@/household/bills";
 import { fetchHouseholdMembers, type HouseholdMember } from "@/household/members";
 import { memberName } from "@/household/member-utils";
@@ -517,21 +515,15 @@ export default function SettingsPage() {
   const tab: SettingsTab =
     tabParam === "categories"
       ? "categories"
-      : tabParam === "goals"
-        ? "goals"
-        : tabParam === "bills"
-          ? "bills"
-          : tabParam === "asset-classes"
-            ? "asset-classes"
-            : "pockets";
+      : tabParam === "bills"
+        ? "bills"
+        : tabParam === "asset-classes"
+          ? "asset-classes"
+          : "pockets";
   const [pockets, setPockets] = useState<Pocket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
-  const [goals, setGoals] = useState<Awaited<ReturnType<typeof fetchGoals>>>([]);
-  const [contributions, setContributions] = useState<
-    Awaited<ReturnType<typeof fetchGoalContributions>>
-  >([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -544,16 +536,12 @@ export default function SettingsPage() {
         nextPockets,
         nextCategories,
         nextMembers,
-        nextGoals,
-        nextContributions,
         nextAssetClasses,
         nextBills,
       ] = await Promise.all([
         fetchPockets(),
         fetchCategories(),
         fetchHouseholdMembers(),
-        fetchGoals(),
-        fetchGoalContributions(),
         fetchAssetClasses(),
         fetchBills(),
       ]);
@@ -561,8 +549,6 @@ export default function SettingsPage() {
       setCategories(nextCategories);
       setAssetClasses(nextAssetClasses);
       setMembers(nextMembers);
-      setGoals(nextGoals);
-      setContributions(nextContributions);
       setBills(nextBills);
     } catch (caught) {
       setPageError(
@@ -578,6 +564,10 @@ export default function SettingsPage() {
   }, [loadSettings]);
 
   const { theme, setTheme } = useTheme();
+
+  if (tabParam === "goals") {
+    return <Navigate to="/goals" replace />;
+  }
 
   return (
     <SettingsShell
@@ -629,16 +619,7 @@ export default function SettingsPage() {
           loading={loading}
           onChange={setBills}
         />
-      ) : (
-        <GoalsPanel
-          goals={goals}
-          contributions={contributions}
-          pockets={pockets}
-          loading={loading}
-          onGoalsChange={setGoals}
-          onContributionsChange={setContributions}
-        />
-      )}
+      ) : null}
     </SettingsShell>
   );
 }

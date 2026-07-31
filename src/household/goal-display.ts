@@ -35,3 +35,39 @@ export function progressByGoal(
 ): GoalProgress[] {
   return goals.map((goal) => goalProgress(goal, contributions));
 }
+
+export function monthsUntilTarget(
+  fromDate: string,
+  targetDate: string | null,
+): number | null {
+  if (!targetDate || targetDate <= fromDate) {
+    return null;
+  }
+
+  const [fromYear, fromMonth, fromDay] = fromDate.split("-").map(Number);
+  const [toYear, toMonth, toDay] = targetDate.split("-").map(Number);
+  let months = (toYear - fromYear) * 12 + (toMonth - fromMonth);
+  if (toDay < fromDay) {
+    months -= 1;
+  }
+
+  return Math.max(months, 1);
+}
+
+export function goalMonthlyPace(
+  goal: Goal,
+  contributions: readonly GoalContribution[],
+  today: string,
+): number | null {
+  const progress = goalProgress(goal, contributions);
+  if (progress.remainingYen <= 0) {
+    return 0;
+  }
+
+  const months = monthsUntilTarget(today, goal.targetDate);
+  if (months == null) {
+    return null;
+  }
+
+  return Math.ceil(progress.remainingYen / months);
+}

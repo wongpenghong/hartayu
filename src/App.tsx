@@ -4,6 +4,7 @@ import { RedirectIfAuthenticated, RequireAuth } from "@/auth/RouteGuards";
 import MainLayout from "@/components/MainLayout";
 import AnalysisPage from "@/pages/AnalysisPage";
 import EntriesPage from "@/pages/EntriesPage";
+import GoalsPage from "@/pages/GoalsPage";
 import HomePage from "@/pages/HomePage";
 import BudgetPage from "@/pages/BudgetPage";
 import MorePage from "@/pages/MorePage";
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/budget" element={<BudgetPage />} />
             <Route path="/limits" element={<Navigate to="/budget" replace />} />
             <Route path="/more" element={<MorePage />} />
+            <Route path="/goals" element={<GoalsPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

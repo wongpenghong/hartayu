@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { goalProgress, goalSavedYen } from "@/household/goal-display";
+import {
+  goalMonthlyPace,
+  goalProgress,
+  goalSavedYen,
+  monthsUntilTarget,
+} from "@/household/goal-display";
 import type { Goal, GoalContribution } from "@/ledger/types";
 
 const goal: Goal = {
@@ -72,5 +77,33 @@ describe("goalProgress", () => {
       progressPercent: 100,
       remainingYen: 0,
     });
+  });
+});
+
+describe("monthsUntilTarget", () => {
+  it("returns null without a future target date", () => {
+    expect(monthsUntilTarget("2026-07-31", null)).toBeNull();
+    expect(monthsUntilTarget("2026-07-31", "2026-07-01")).toBeNull();
+  });
+
+  it("counts calendar months until the target date", () => {
+    expect(monthsUntilTarget("2026-07-31", "2027-12-01")).toBe(16);
+    expect(monthsUntilTarget("2026-07-15", "2026-08-14")).toBe(1);
+  });
+});
+
+describe("goalMonthlyPace", () => {
+  it("divides remaining amount by months until target", () => {
+    expect(goalMonthlyPace(goal, contributions, "2026-07-31")).toBe(21_875);
+  });
+
+  it("returns null when no target date is set", () => {
+    expect(
+      goalMonthlyPace(
+        { ...goal, targetDate: null },
+        contributions,
+        "2026-07-31",
+      ),
+    ).toBeNull();
   });
 });

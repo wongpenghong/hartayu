@@ -37,6 +37,23 @@ const hubs = [
     ),
   },
   {
+    label: "Goals",
+    path: "/goals",
+    iconClass: "bg-[#34c759]",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.8" />
+        <path
+          d="M12 8v4l2.5 2.5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </>
+    ),
+  },
+  {
     label: "Portfolio",
     path: "/portfolio",
     iconClass: "bg-[#5856d6]",
