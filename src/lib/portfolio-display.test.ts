@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatHoldingPnlLine,
   formatReturnPct,
+  formatSignedYen,
   formatSignedYenCompact,
   pnlTextClass,
   pnlTone,
@@ -13,6 +14,14 @@ describe("pnlTone", () => {
     expect(pnlTone(-1)).toBe("loss");
     expect(pnlTone(0)).toBe("flat");
     expect(pnlTone(null)).toBe("na");
+  });
+});
+
+describe("formatSignedYen", () => {
+  it("prefixes sign for non-zero amounts", () => {
+    expect(formatSignedYen(20_000)).toBe("+¥20,000");
+    expect(formatSignedYen(-15_000)).toBe("−¥15,000");
+    expect(formatSignedYen(0)).toBe("¥0");
   });
 });
 
@@ -34,7 +43,7 @@ describe("formatReturnPct", () => {
 
 describe("formatHoldingPnlLine", () => {
   it("joins yen and percent", () => {
-    expect(formatHoldingPnlLine(80_000, 40)).toBe("+¥8万 +40.0%");
+    expect(formatHoldingPnlLine(80_000, 40)).toBe("+¥80,000 +40.0%");
   });
 });
 

@@ -1,4 +1,4 @@
-import { formatYenCompact } from "@/lib/format-yen";
+import { formatYen, formatYenCompact } from "@/lib/format-yen";
 
 export type PnlTone = "gain" | "loss" | "flat" | "na";
 
@@ -28,6 +28,16 @@ export function pnlTextClass(tone: PnlTone): string {
   }
 }
 
+export function formatSignedYen(amountYen: number): string {
+  if (amountYen === 0) {
+    return formatYen(0);
+  }
+  if (amountYen > 0) {
+    return `+${formatYen(amountYen)}`;
+  }
+  return formatYen(amountYen);
+}
+
 export function formatSignedYenCompact(amountYen: number): string {
   if (amountYen === 0) {
     return formatYenCompact(0);
@@ -45,5 +55,5 @@ export function formatReturnPct(returnPct: number): string {
 }
 
 export function formatHoldingPnlLine(pnlYen: number, returnPct: number): string {
-  return `${formatSignedYenCompact(pnlYen)} ${formatReturnPct(returnPct)}`;
+  return `${formatSignedYen(pnlYen)} ${formatReturnPct(returnPct)}`;
 }

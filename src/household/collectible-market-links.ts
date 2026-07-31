@@ -183,6 +183,14 @@ export type MarketRefreshSummary = {
   carriedForward: number;
 };
 
+function formatFunctionInvokeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("Failed to send a request to the Edge Function")) {
+    return "Edge function unreachable. In Supabase Dashboard: deploy refresh-household-market-prices, set Verify JWT to OFF, then retry.";
+  }
+  return message;
+}
+
 export async function refreshHouseholdMarketPrices(
   householdId: string,
 ): Promise<MarketRefreshSummary> {
@@ -192,7 +200,7 @@ export async function refreshHouseholdMarketPrices(
   });
 
   if (error) {
-    throw error;
+    throw new Error(formatFunctionInvokeError(error));
   }
 
   if (data?.error) {

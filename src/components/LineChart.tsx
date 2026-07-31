@@ -25,6 +25,36 @@ function yAxisTicks(maxValue: number, minValue: number, count: number): number[]
   );
 }
 
+function selectXAxisLabelIndices(
+  points: LineChartPoint[],
+  plotWidth: number,
+): number[] {
+  const minSpacing = 44;
+  const maxLabels = Math.max(2, Math.floor(plotWidth / minSpacing));
+  const candidates =
+    points.length <= maxLabels
+      ? points.map((_, index) => index)
+      : [
+          0,
+          ...Array.from({ length: maxLabels - 2 }, (_, slot) =>
+            Math.round(((slot + 1) * (points.length - 1)) / (maxLabels - 1)),
+          ),
+          points.length - 1,
+        ];
+
+  const seen = new Set<string>();
+  const indices: number[] = [];
+  for (const index of candidates) {
+    const label = points[index]?.label;
+    if (label == null || seen.has(label)) {
+      continue;
+    }
+    seen.add(label);
+    indices.push(index);
+  }
+  return indices;
+}
+
 export function LineChart({
   points,
   emptyLabel = "No snapshots yet.",
@@ -68,6 +98,7 @@ export function LineChart({
     const polyline = coordinates.map((point) => `${point.x},${point.y}`).join(" ");
     const yTicks = yAxisTicks(maxValue, minValue, 5);
     const singlePointY = coordinates.length === 1 ? coordinates[0].y : null;
+    const xLabelIndices = new Set(selectXAxisLabelIndices(points, plotWidth));
 
     return {
       width,
@@ -79,6 +110,7 @@ export function LineChart({
       areaPath,
       polyline,
       yTicks,
+      xLabelIndices,
       minValue,
       range,
       singlePointY,
@@ -197,17 +229,19 @@ export function LineChart({
           );
         })}
 
-        {layout.coordinates.map((point) => (
-          <text
-            key={`label-${point.label}-${point.index}`}
-            x={point.x}
-            y={layout.height - 8}
-            textAnchor="middle"
-            className="fill-neutral-500 text-[9px]"
-          >
-            {point.label}
-          </text>
-        ))}
+        {layout.coordinates.map((point) =>
+          layout.xLabelIndices.has(point.index) ? (
+            <text
+              key={`label-${point.label}-${point.index}`}
+              x={point.x}
+              y={layout.height - 8}
+              textAnchor="middle"
+              className="fill-neutral-500 text-[9px]"
+            >
+              {point.label}
+            </text>
+          ) : null,
+        )}
 
         {selectedCoord ? (
           <g pointerEvents="none">

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
+import { canRefreshMarketPrices } from "@/auth/member-auth";
 import { fetchAssetClasses, type AssetClass } from "@/household/asset-classes";
 import {
   createHolding,
@@ -37,6 +38,7 @@ import {
   ErrorNote,
   GroupCard,
   ListRow,
+  PageBackLink,
   PillTabs,
 } from "@/components/NativeUI";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
@@ -51,7 +53,7 @@ import {
   portfolioTrendSessionPoints,
 } from "@/ledger/portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "@/ledger/portfolio";
-import { formatYenCompact, parseYenInput, todayInTokyo } from "@/lib/format-yen";
+import { formatYen, parseYenInput, todayInTokyo } from "@/lib/format-yen";
 import type { ConditionGrade } from "@/market/snkrdunk";
 import {
   HoldingPnlBadge,
@@ -64,7 +66,7 @@ type HoldingSheetMode =
   | { kind: "edit"; holding: Holding };
 
 export default function PortfolioPage() {
-  const { household } = useAuth();
+  const { household, username } = useAuth();
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [marketLinks, setMarketLinks] = useState<CollectibleMarketLink[]>([]);
@@ -100,6 +102,7 @@ export default function PortfolioPage() {
   );
 
   const hasMarketLinks = marketLinks.length > 0;
+  const showMarketRefresh = hasMarketLinks && canRefreshMarketPrices(username);
 
   const latestByHolding = useMemo(
     () => latestSnapshotsByHolding(sessions, snapshots),
@@ -412,6 +415,7 @@ export default function PortfolioPage() {
   return (
     <>
       <header className="px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <PageBackLink to="/more" label="More" />
         <h1 className="text-[34px] font-bold leading-tight tracking-tight">Portfolio</h1>
         <p className="mt-1 text-[15px] text-neutral-500">Investments tracked separately from cash</p>
       </header>
@@ -464,7 +468,7 @@ export default function PortfolioPage() {
               <span className="text-[17px] font-medium text-[#007aff]">Update values</span>
             </ListRow>
           ) : null}
-          {hasMarketLinks ? (
+          {showMarketRefresh ? (
             <ListRow onClick={() => void handleRefreshMarketPrices()}>
               <span className="text-[17px] font-medium text-[#007aff]">
                 {refreshBusy ? "Refreshing prices…" : "Refresh prices"}
@@ -487,7 +491,7 @@ export default function PortfolioPage() {
                 holding.quantity != null ? ` · ${holding.quantity} units` : " · Total value";
               const costLabel =
                 holding.costBasisYen != null
-                  ? ` · Cost ${formatYenCompact(holding.costBasisYen)}`
+                  ? ` · Cost ${formatYen(holding.costBasisYen)}`
                   : "";
               return (
                 <ListRow key={holding.id} onClick={() => openEditHolding(holding)}>
@@ -509,7 +513,7 @@ export default function PortfolioPage() {
                       </span>
                     ) : (
                       <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
-                        {valueYen == null ? "—" : formatYenCompact(valueYen)}
+                        {valueYen == null ? "—" : formatYen(valueYen)}
                       </span>
                     )}
                     {!noQuote ? (

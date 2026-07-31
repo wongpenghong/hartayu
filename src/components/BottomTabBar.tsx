@@ -6,6 +6,11 @@ import { IconButton } from "@/components/NativeUI";
 export function BottomTabBar({ disabled }: { disabled?: boolean }) {
   const location = useLocation();
   const { openAddEntry } = useEntrySheet();
+  const moreActive =
+    location.pathname === "/more" ||
+    location.pathname === "/analysis" ||
+    location.pathname === "/limits" ||
+    location.pathname === "/portfolio";
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md justify-center px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -33,8 +38,8 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
         <NavTab
           to="/more"
           label="More"
-          active={location.pathname === "/more"}
-          icon={<MoreIcon active={location.pathname === "/more"} />}
+          active={moreActive}
+          icon={<MoreIcon active={moreActive} />}
         />
         <NavTab
           to="/settings"

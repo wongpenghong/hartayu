@@ -10,7 +10,7 @@ import { fetchPockets } from "@/household/pockets";
 import { pocketNameById } from "@/household/pocket-utils";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
 import { DonutChart, type DonutSegment } from "@/components/DonutChart";
-import { EmptyState, ErrorNote, PillTabs } from "@/components/NativeUI";
+import { EmptyState, ErrorNote, PageBackLink, PillTabs } from "@/components/NativeUI";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import {
   expenseTotalsByCategory,
@@ -154,6 +154,7 @@ export default function AnalysisPage() {
   return (
     <>
       <header className="px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <PageBackLink to="/more" label="More" />
         <h1 className="text-[34px] font-bold leading-tight tracking-tight">
           Analysis
         </h1>

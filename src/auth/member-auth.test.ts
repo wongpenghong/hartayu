@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   memberEmail,
   normalizeUsername,
+  canRefreshMarketPrices,
   validatePin,
   validateUsername,
   usernameFromEmail,
@@ -29,5 +30,12 @@ describe("member auth helpers", () => {
   it("extracts username from member email", () => {
     expect(usernameFromEmail("iwan@hartayu.internal")).toBe("iwan");
     expect(usernameFromEmail("iwan@gmail.com")).toBeNull();
+  });
+
+  it("allows market refresh only for salim", () => {
+    expect(canRefreshMarketPrices("salim")).toBe(true);
+    expect(canRefreshMarketPrices("Salim")).toBe(true);
+    expect(canRefreshMarketPrices("iwan")).toBe(false);
+    expect(canRefreshMarketPrices(null)).toBe(false);
   });
 });

@@ -1,9 +1,9 @@
 import type { PortfolioPnlSummary } from "@/ledger/portfolio";
 import { EmptyState } from "@/components/NativeUI";
-import { formatYenCompact } from "@/lib/format-yen";
+import { formatYen } from "@/lib/format-yen";
 import {
   formatReturnPct,
-  formatSignedYenCompact,
+  formatSignedYen,
   pnlTextClass,
   pnlTone,
 } from "@/lib/portfolio-display";
@@ -35,11 +35,11 @@ export function PortfolioPnlSummaryCard({
     <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
       <p className="mb-3 text-[17px] font-semibold">Unrealized P&L</p>
       <p className="text-[15px] tabular-nums text-neutral-600 dark:text-neutral-400">
-        Cost {formatYenCompact(summary.totalCostBasisYen)} → Value{" "}
-        {formatYenCompact(summary.totalValueYen)}
+        Cost {formatYen(summary.totalCostBasisYen)} → Value{" "}
+        {formatYen(summary.totalValueYen)}
       </p>
       <p className={`mt-2 text-[28px] font-bold tabular-nums ${toneClass}`}>
-        {formatSignedYenCompact(summary.totalPnlYen)}
+        {formatSignedYen(summary.totalPnlYen)}
       </p>
       <p className={`text-[15px] font-medium tabular-nums ${toneClass}`}>
         {formatReturnPct(summary.returnPct)}
@@ -72,7 +72,7 @@ export function HoldingPnlBadge({
     <span
       className={`text-[13px] font-semibold tabular-nums ${pnlTextClass(tone)}`}
     >
-      {formatSignedYenCompact(pnlYen)} {formatReturnPct(returnPct)}
+      {formatSignedYen(pnlYen)} {formatReturnPct(returnPct)}
     </span>
   );
 }

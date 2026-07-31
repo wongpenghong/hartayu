@@ -1,9 +1,78 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import {
-  fetchSnkrdunkQuote,
-  quoteErrorMessage,
-  type ConditionGrade,
-} from "../_shared/snkrdunk.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const GRADE_TO_FILTER_ID: Record<string, string> = {
+  a: "like_new",
+  b: "minor_scratches",
+  c: "moderate_scratches",
+  d: "significant_damage",
+  psa9: "psa_9",
+  psa10: "psa_10",
+};
+
+type SnkrdunkChip = {
+  filterConditionId: string;
+  hasListing: boolean;
+  usedMinPrice?: number | null;
+};
+
+type SnkrdunkQuoteResult =
+  | { ok: true; unitPriceYen: number }
+  | { ok: false; reason: "no_listing" | "invalid_response" | "missing_price" | "fetch_failed" };
+
+function parseSnkrdunkQuote(
+  response: { chips?: SnkrdunkChip[] },
+  grade: string,
+): SnkrdunkQuoteResult {
+  const filterId = GRADE_TO_FILTER_ID[grade];
+  const chip = response.chips?.find((row) => row.filterConditionId === filterId);
+  if (!chip) {
+    return { ok: false, reason: "invalid_response" };
+  }
+  if (!chip.hasListing) {
+    return { ok: false, reason: "no_listing" };
+  }
+  const price = chip.usedMinPrice;
+  if (price == null || !Number.isFinite(price) || price <= 0) {
+    return { ok: false, reason: "missing_price" };
+  }
+  return { ok: true, unitPriceYen: Math.round(price) };
+}
+
+async function fetchSnkrdunkQuote(
+  productId: number,
+  grade: string,
+): Promise<SnkrdunkQuoteResult> {
+  const url = `https://snkrdunk.com/v2/products/${productId}/size-chips?type=apparel`;
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      return { ok: false, reason: "fetch_failed" };
+    }
+    const body = (await response.json()) as { chips?: SnkrdunkChip[] };
+    return parseSnkrdunkQuote(body, grade);
+  } catch {
+    return { ok: false, reason: "fetch_failed" };
+  }
+}
+
+function quoteErrorMessage(result: SnkrdunkQuoteResult): string | null {
+  if (result.ok) {
+    return null;
+  }
+  if (result.reason === "no_listing") {
+    return "No listing at this grade";
+  }
+  return "Fetch failed";
+}
 
 type RefreshRequest = {
   householdId?: string;
@@ -18,7 +87,7 @@ type HoldingRow = {
 type MarketLinkRow = {
   holding_id: string;
   snkrdunk_product_id: number;
-  condition_grade: ConditionGrade;
+  condition_grade: string;
 };
 
 type PriorSnapshotRow = {
@@ -39,7 +108,7 @@ function todayInTokyo(now = new Date()): string {
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
@@ -211,7 +280,53 @@ async function refreshHousehold(
   return { quoted, noQuote, carriedForward };
 }
 
+function usernameFromMemberEmail(email: string | undefined): string | null {
+  if (!email) {
+    return null;
+  }
+  const [local, domain] = email.split("@");
+  if (domain !== "hartayu.internal" || !local) {
+    return null;
+  }
+  return local.toLowerCase();
+}
+
+const MARKET_REFRESH_USERNAME =
+  Deno.env.get("MARKET_REFRESH_ALLOWED_USERNAME") ?? "salim";
+
+async function householdIdsWithMarketLinks(
+  admin: ReturnType<typeof createClient>,
+): Promise<string[]> {
+  const { data: links, error: linksError } = await admin
+    .from("collectible_market_links")
+    .select("holding_id");
+
+  if (linksError) {
+    throw linksError;
+  }
+
+  const holdingIds = (links ?? []).map((row) => row.holding_id);
+  if (holdingIds.length === 0) {
+    return [];
+  }
+
+  const { data: holdings, error: holdingsError } = await admin
+    .from("holdings")
+    .select("household_id")
+    .in("id", holdingIds);
+
+  if (holdingsError) {
+    throw holdingsError;
+  }
+
+  return [...new Set((holdings ?? []).map((row) => row.household_id))];
+}
+
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
@@ -237,34 +352,24 @@ Deno.serve(async (request) => {
   });
 
   if (body.cronSecret && cronSecret && body.cronSecret === cronSecret) {
-    const { data: linkRows, error: linkError } = await admin
-      .from("collectible_market_links")
-      .select("holding_id, holdings!inner(household_id)");
+    try {
+      const householdIds = await householdIdsWithMarketLinks(admin);
+      let quoted = 0;
+      let noQuote = 0;
+      let carriedForward = 0;
 
-    if (linkError) {
-      return jsonResponse({ error: linkError.message }, 500);
+      for (const householdId of householdIds) {
+        const summary = await refreshHousehold(admin, householdId);
+        quoted += summary.quoted;
+        noQuote += summary.noQuote;
+        carriedForward += summary.carriedForward;
+      }
+
+      return jsonResponse({ quoted, noQuote, carriedForward, households: householdIds.length });
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Cron refresh failed";
+      return jsonResponse({ error: message }, 500);
     }
-
-    const householdIds = [
-      ...new Set(
-        (linkRows ?? []).map(
-          (row) => (row.holdings as { household_id: string }).household_id,
-        ),
-      ),
-    ];
-
-    let quoted = 0;
-    let noQuote = 0;
-    let carriedForward = 0;
-
-    for (const householdId of householdIds) {
-      const summary = await refreshHousehold(admin, householdId);
-      quoted += summary.quoted;
-      noQuote += summary.noQuote;
-      carriedForward += summary.carriedForward;
-    }
-
-    return jsonResponse({ quoted, noQuote, carriedForward, households: householdIds.length });
   }
 
   const authHeader = request.headers.get("Authorization");
@@ -300,6 +405,10 @@ Deno.serve(async (request) => {
 
   if (!membership) {
     return jsonResponse({ error: "Forbidden" }, 403);
+  }
+
+  if (usernameFromMemberEmail(userData.user.email) !== MARKET_REFRESH_USERNAME) {
+    return jsonResponse({ error: "Market refresh is restricted" }, 403);
   }
 
   try {

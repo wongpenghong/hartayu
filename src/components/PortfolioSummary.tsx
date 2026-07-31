@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/NativeUI";
 import { formatYen } from "@/lib/format-yen";
 import {
   formatReturnPct,
-  formatSignedYenCompact,
+  formatSignedYen,
   pnlTextClass,
   pnlTone,
 } from "@/lib/portfolio-display";
@@ -59,7 +59,7 @@ export function PortfolioSummary({
       </p>
       {pnlSummary != null ? (
         <p className={`mt-1 text-[17px] font-semibold tabular-nums ${pnlToneClass}`}>
-          {formatSignedYenCompact(pnlSummary.totalPnlYen)}{" "}
+          {formatSignedYen(pnlSummary.totalPnlYen)}{" "}
           {formatReturnPct(pnlSummary.returnPct)}
         </p>
       ) : null}

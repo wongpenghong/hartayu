@@ -1,4 +1,5 @@
 export const MEMBER_EMAIL_DOMAIN = "hartayu.internal";
+export const MARKET_REFRESH_USERNAME = "salim";
 
 export function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
@@ -32,6 +33,10 @@ export function usernameFromEmail(email: string | undefined): string | null {
     return null;
   }
   return local;
+}
+
+export function canRefreshMarketPrices(username: string | null | undefined): boolean {
+  return normalizeUsername(username ?? "") === MARKET_REFRESH_USERNAME;
 }
 
 export function formatAuthError(error: unknown): string {
