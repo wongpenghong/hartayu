@@ -622,16 +622,27 @@ export function MemberChip({ label }: { label: string }) {
 export function LimitProgressBar({
   spentYen,
   limitYen,
+  highlightOver = false,
 }: {
   spentYen: number;
   limitYen: number;
+  highlightOver?: boolean;
 }) {
+  const over = highlightOver && limitYen > 0 && spentYen > limitYen;
   const ratio = limitYen > 0 ? Math.min(spentYen / limitYen, 1) : 0;
 
   return (
-    <div className="relative h-2 overflow-hidden rounded-full bg-[#e8f5c4] dark:bg-neutral-800">
+    <div
+      className={`relative h-2 overflow-hidden rounded-full ${
+        over ? "bg-[#ffd8d6] dark:bg-[#4a1f1f]" : "bg-[#e8f5c4] dark:bg-neutral-800"
+      }`}
+    >
       <div
-        className="h-full rounded-full bg-neutral-900 transition-all dark:bg-neutral-200"
+        className={`h-full rounded-full transition-all ${
+          over
+            ? "bg-[#ff3b30]"
+            : "bg-neutral-900 dark:bg-neutral-200"
+        }`}
         style={{ width: `${ratio * 100}%` }}
       />
     </div>

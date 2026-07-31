@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatRemainingBudget } from "@/household/entry-display";
 import {
   fetchCategories,
   updateCategoryLimit,
@@ -11,14 +10,16 @@ import {
   budgetGroupLabel,
   type BudgetGroup,
 } from "@/household/budget-groups";
+import { formatBudgetSectionTitle } from "@/household/budget-display";
 import { fetchEntries } from "@/household/entries";
+import { BudgetCategoryRow } from "@/components/BudgetCategoryRow";
+import { BudgetSummaryCard } from "@/components/BudgetSummaryCard";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
 import {
   EmptyState,
   ErrorNote,
   Field,
   GroupCard,
-  LimitProgressBar,
   PageBackLink,
   PrimaryAction,
   SheetOverlay,
@@ -29,7 +30,6 @@ import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
 import { budgetPace, expenseTotalsByCategory } from "@/ledger/ledger";
 import {
   currentMonthInTokyo,
-  formatYen,
   formatYenDigits,
   parseYenInput,
   todayInTokyo,
@@ -43,6 +43,8 @@ type BudgetRow = {
 type BudgetSection = {
   key: BudgetGroup | "other";
   title: string;
+  spentYen: number;
+  limitYen: number;
   rows: BudgetRow[];
 };
 
@@ -53,51 +55,6 @@ type BudgetPageCache = {
   categories: Category[];
 };
 
-function BudgetCategoryRow({
-  category,
-  spentYen,
-  month,
-  today,
-  onEdit,
-}: {
-  category: Category;
-  spentYen: number;
-  month: ReturnType<typeof currentMonthInTokyo>;
-  today: string;
-  onEdit: (category: Category) => void;
-}) {
-  const budgetYen = category.monthly_limit_yen ?? 0;
-  const remainingYen = budgetYen - spentYen;
-  const over = remainingYen < 0;
-  const pace = budgetPace(spentYen, budgetYen, month.year, month.month, today);
-
-  return (
-    <button
-      type="button"
-      onClick={() => onEdit(category)}
-      className="w-full border-b border-[#ececee] px-4 py-4 text-left last:border-b-0 active:bg-neutral-50 dark:border-neutral-800 dark:active:bg-neutral-800"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[17px] font-medium">{category.name}</span>
-        <span
-          className={`text-[15px] font-semibold tabular-nums ${
-            over ? "text-[#ff3b30]" : "text-neutral-700 dark:text-neutral-300"
-          }`}
-        >
-          {formatYen(spentYen)} spent · {formatRemainingBudget(remainingYen)}
-        </span>
-      </div>
-      <div className="mt-3">
-        <LimitProgressBar spentYen={spentYen} limitYen={budgetYen} />
-      </div>
-      <p className="mt-2 text-[13px] text-neutral-500">
-        {pace.daysLeft} days left · projecting {formatYen(pace.projectedSpendYen)} ·{" "}
-        {formatYen(pace.dailyAllowanceYen)}/day available
-      </p>
-    </button>
-  );
-}
-
 export default function BudgetPage() {
   const { registerEntryChangeListener } = useEntrySheet();
   const cached = getPageCache<BudgetPageCache>(BUDGET_PAGE_CACHE);
@@ -107,10 +64,12 @@ export default function BudgetPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Category | null>(null);
   const [budgetInput, setBudgetInput] = useState("");
+  const [showUnset, setShowUnset] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const month = useMemo(() => currentMonthInTokyo(), []);
+  const today = useMemo(() => todayInTokyo(), []);
 
   const rows = useMemo((): BudgetRow[] => {
     const spentByCategory = new Map(
@@ -148,6 +107,11 @@ export default function BudgetPage() {
         nextSections.push({
           key: group,
           title: budgetGroupLabel(group),
+          spentYen: groupRows.reduce((total, row) => total + row.spentYen, 0),
+          limitYen: groupRows.reduce(
+            (total, row) => total + (row.category.monthly_limit_yen ?? 0),
+            0,
+          ),
           rows: groupRows,
         });
       }
@@ -158,6 +122,11 @@ export default function BudgetPage() {
       nextSections.push({
         key: "other",
         title: budgetGroupLabel(null),
+        spentYen: otherRows.reduce((total, row) => total + row.spentYen, 0),
+        limitYen: otherRows.reduce(
+          (total, row) => total + (row.category.monthly_limit_yen ?? 0),
+          0,
+        ),
         rows: otherRows,
       });
     }
@@ -165,21 +134,33 @@ export default function BudgetPage() {
     return nextSections;
   }, [rows]);
 
-  const today = useMemo(() => todayInTokyo(), []);
-
-  const householdPace = useMemo(() => {
-    if (rows.length === 0) {
-      return null;
-    }
-
+  const householdTotals = useMemo(() => {
     const limitYen = rows.reduce(
       (total, row) => total + (row.category.monthly_limit_yen ?? 0),
       0,
     );
     const spentYen = rows.reduce((total, row) => total + row.spentYen, 0);
 
-    return budgetPace(spentYen, limitYen, month.year, month.month, today);
-  }, [month.month, month.year, rows, today]);
+    return { limitYen, spentYen };
+  }, [rows]);
+
+  const householdPace = useMemo(() => {
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return budgetPace(
+      householdTotals.spentYen,
+      householdTotals.limitYen,
+      month.year,
+      month.month,
+      today,
+    );
+  }, [householdTotals, month.month, month.year, rows.length, today]);
+
+  const unsetCategories = categories.filter(
+    (category) => category.kind === "expense" && category.monthly_limit_yen == null,
+  );
 
   const loadBudget = useCallback(async (options?: RefreshOptions) => {
     if (!options?.background) {
@@ -260,10 +241,6 @@ export default function BudgetPage() {
     }
   }
 
-  const unsetCategories = categories.filter(
-    (category) => category.kind === "expense" && category.monthly_limit_yen == null,
-  );
-
   return (
     <>
       <header className="px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
@@ -277,18 +254,6 @@ export default function BudgetPage() {
       <main className="flex flex-1 flex-col gap-4 px-4 pb-28">
         {loadError ? <ErrorNote message={loadError} /> : null}
 
-        {householdPace ? (
-          <GroupCard title="Household pace">
-            <div className="px-4 py-4 text-[15px] text-neutral-600 dark:text-neutral-300">
-              <p>
-                {householdPace.daysLeft} days left · projecting{" "}
-                {formatYen(householdPace.projectedSpendYen)} ·{" "}
-                {formatYen(householdPace.dailyAllowanceYen)}/day available
-              </p>
-            </div>
-          </GroupCard>
-        ) : null}
-
         {loading ? (
           <GroupCard title="This month">
             <EmptyState message="Loading budget…" />
@@ -297,36 +262,66 @@ export default function BudgetPage() {
           <GroupCard title="This month">
             <EmptyState message="No budgets set yet. Add one below." />
           </GroupCard>
-        ) : (
-          sections.map((section) => (
-            <GroupCard key={section.key} title={section.title}>
-              {section.rows.map(({ category, spentYen }) => (
-                <BudgetCategoryRow
-                  key={category.id}
-                  category={category}
-                  spentYen={spentYen}
-                  month={month}
-                  today={today}
-                  onEdit={openEditor}
-                />
-              ))}
-            </GroupCard>
-          ))
-        )}
+        ) : householdPace ? (
+          <BudgetSummaryCard
+            spentYen={householdTotals.spentYen}
+            limitYen={householdTotals.limitYen}
+            pace={householdPace}
+          />
+        ) : null}
+
+        {!loading && rows.length > 0
+          ? sections.map((section) => (
+              <GroupCard
+                key={section.key}
+                title={formatBudgetSectionTitle(
+                  section.title,
+                  section.spentYen,
+                  section.limitYen,
+                )}
+              >
+                {section.rows.map(({ category, spentYen }) => (
+                  <BudgetCategoryRow
+                    key={category.id}
+                    category={category}
+                    spentYen={spentYen}
+                    onEdit={openEditor}
+                  />
+                ))}
+              </GroupCard>
+            ))
+          : null}
 
         {unsetCategories.length > 0 ? (
-          <GroupCard title="Add budget">
-            {unsetCategories.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => openEditor(category)}
-                className="flex w-full items-center justify-between border-b border-[#ececee] px-4 py-3.5 text-left last:border-b-0 active:bg-neutral-50 dark:border-neutral-800 dark:active:bg-neutral-800"
-              >
-                <span className="text-[17px] font-medium">{category.name}</span>
-                <span className="text-[15px] font-medium text-[#007aff]">Set budget</span>
-              </button>
-            ))}
+          <GroupCard>
+            <button
+              type="button"
+              onClick={() => setShowUnset((current) => !current)}
+              className="flex w-full items-center justify-between px-4 py-3.5 text-left active:bg-neutral-50 dark:active:bg-neutral-800"
+            >
+              <span className="text-[17px] font-medium">
+                {unsetCategories.length} categor
+                {unsetCategories.length === 1 ? "y" : "ies"} without budget
+              </span>
+              <span className="text-[15px] font-medium text-[#007aff]">
+                {showUnset ? "Hide" : "Show"}
+              </span>
+            </button>
+            {showUnset
+              ? unsetCategories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => openEditor(category)}
+                    className="flex w-full items-center justify-between border-t border-[#ececee] px-4 py-3.5 text-left active:bg-neutral-50 dark:border-neutral-800 dark:active:bg-neutral-800"
+                  >
+                    <span className="text-[17px] font-medium">{category.name}</span>
+                    <span className="text-[15px] font-medium text-[#007aff]">
+                      Set budget
+                    </span>
+                  </button>
+                ))
+              : null}
           </GroupCard>
         ) : null}
       </main>

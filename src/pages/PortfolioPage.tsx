@@ -24,7 +24,6 @@ import {
   deleteCollectibleMarketLink,
   fetchCollectibleMarketLinks,
   hasMarketLinkInput,
-  holdingShowsNoQuote,
   isCollectiblesAssetClass,
   parseSnkrdunkProductId,
   refreshHouseholdMarketPrices,
@@ -37,7 +36,6 @@ import {
   hasPortfolioSelection,
   resolveScopedHoldingIds,
   toggleDonutSelection,
-  toggleHoldingSelection,
   type PortfolioSelection,
 } from "@/household/portfolio-selection";
 import {
@@ -75,20 +73,20 @@ import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
 import {
   allocationByAssetClassLatest,
   allocationByHoldingLatest,
-  holdingPnl,
-  holdingValueYen,
   holdingsNeedCostBasisHint,
   latestSnapshotsByHolding,
   portfolioPnlSummary,
   portfolioTrendSessionPoints,
 } from "@/ledger/portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "@/ledger/portfolio";
-import { formatYen, parseYenInput, todayInTokyo } from "@/lib/format-yen";
+import { parseYenInput, todayInTokyo } from "@/lib/format-yen";
 import type { ConditionGrade } from "@/market/snkrdunk";
+import type { HoldingStatusFilter } from "@/household/holdings-list-display";
 import {
-  HoldingPnlBadge,
-  PortfolioPnlSummaryCard,
-} from "@/components/portfolio/PortfolioPnlSummary";
+  HoldingsListPanel,
+  HoldingsStatusFilter,
+} from "@/components/portfolio/HoldingsListPanel";
+import { PortfolioPnlSummaryCard } from "@/components/portfolio/PortfolioPnlSummary";
 
 type HoldingSheetMode =
   | { kind: "closed" }
@@ -116,7 +114,12 @@ export default function PortfolioPage() {
   const [sessions, setSessions] = useState<SnapshotSession[]>(cached?.sessions ?? []);
   const [snapshots, setSnapshots] = useState<HoldingSnapshot[]>(cached?.snapshots ?? []);
   const [classFilter, setClassFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<HoldingStatusFilter>("all");
   const [selection, setSelection] = useState<PortfolioSelection>({ kind: "none" });
+
+  useEffect(() => {
+    setStatusFilter("all");
+  }, [classFilter]);
   const [loading, setLoading] = useState(!hasPageCache(PORTFOLIO_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [holdingSheet, setHoldingSheet] = useState<HoldingSheetMode>({ kind: "closed" });
@@ -708,6 +711,10 @@ export default function PortfolioPage() {
           options={filterOptions}
         />
 
+        {visibleHoldings.length > 0 ? (
+          <HoldingsStatusFilter value={statusFilter} onChange={setStatusFilter} />
+        ) : null}
+
         {hasPortfolioSelection(selection) ? (
           <button
             type="button"
@@ -780,78 +787,18 @@ export default function PortfolioPage() {
               </span>
             </ListRow>
           ) : null}
-          {loading ? (
-            <EmptyState message="Loading holdings…" />
-          ) : visibleHoldings.length === 0 ? (
-            <EmptyState message="No holdings in this group yet." />
-          ) : (
-            visibleHoldings.map((holding) => {
-              const snapshot = latestByHolding.get(holding.id);
-              const link = marketLinksByHolding.get(holding.id);
-              const valueYen =
-                snapshot != null ? holdingValueYen(holding, snapshot) : null;
-              const pnl = holdingPnl(holding, snapshot);
-              const noQuote = holdingShowsNoQuote(link, snapshot);
-              const isSelected =
-                !hasPortfolioSelection(selection) || scopedHoldingIds.includes(holding.id);
-              const quantityLabel =
-                holding.quantity != null ? ` · ${holding.quantity} units` : " · Total value";
-              const costLabel =
-                holding.costBasisYen != null
-                  ? ` · Cost ${formatYen(holding.costBasisYen)}`
-                  : "";
-              return (
-                <div
-                  key={holding.id}
-                  className={`flex w-full items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0 dark:border-neutral-800${
-                    isSelected ? "" : " opacity-40"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelection((current) => toggleHoldingSelection(current, holding.id))
-                    }
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-70"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[17px] font-medium">
-                        {holding.name}
-                      </span>
-                      <span className="mt-0.5 block text-[13px] text-neutral-500">
-                        {assetClassNames.get(holding.assetClassId) ?? "Class"}
-                        {quantityLabel}
-                        {costLabel}
-                        {link ? ` · ${link.collectibleCode}` : ""}
-                      </span>
-                    </span>
-                    <span className="flex flex-col items-end gap-0.5">
-                      {noQuote ? (
-                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                          No quote
-                        </span>
-                      ) : (
-                        <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
-                          {valueYen == null ? "—" : formatYen(valueYen)}
-                        </span>
-                      )}
-                      {!noQuote ? (
-                        <HoldingPnlBadge pnlYen={pnl.pnlYen} returnPct={pnl.returnPct} />
-                      ) : null}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openEditHolding(holding)}
-                    className="shrink-0 px-1 py-2 text-[20px] text-neutral-300 active:text-neutral-500"
-                    aria-label={`Edit ${holding.name}`}
-                  >
-                    ›
-                  </button>
-                </div>
-              );
-            })
-          )}
+          <HoldingsListPanel
+            holdings={visibleHoldings}
+            assetClassNames={assetClassNames}
+            marketLinksByHolding={marketLinksByHolding}
+            latestByHolding={latestByHolding}
+            selection={selection}
+            scopedHoldingIds={scopedHoldingIds}
+            loading={loading}
+            statusFilter={statusFilter}
+            onSelectionChange={setSelection}
+            onEditHolding={openEditHolding}
+          />
         </GroupCard>
       </main>
 

@@ -106,3 +106,11 @@ _Avoid_: NAV, appraisal
 **No quote**:
 The market has no listing at the chosen condition grade. The holding is excluded from that auto snapshot total until the user enters a manual value.
 _Avoid_: N/A, zero
+
+**Goal contribution**:
+An amount logged toward a savings goal. Positive rows add progress; negative rows record a withdraw. Summed per goal for saved total and progress bar.
+_Avoid_: Entry, transfer
+
+**Monthly pace**:
+For a goal with a target date, remaining yen divided by whole months left until that date — shown as "save ¥X/month" in the goal detail modal.
+_Avoid_: Required payment, installment
