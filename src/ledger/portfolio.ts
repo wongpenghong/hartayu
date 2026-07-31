@@ -253,6 +253,34 @@ export function allocationByHoldingLatest(
     .sort((a, b) => b.totalYen - a.totalYen);
 }
 
+export function portfolioTotalValueLatest(
+  holdings: Holding[],
+  sessions: SnapshotSession[],
+  snapshots: HoldingSnapshot[],
+): number {
+  const latest = latestSnapshotsByHolding(sessions, snapshots);
+  const holdingsById = new Map(holdings.map((holding) => [holding.id, holding]));
+
+  let totalYen = 0;
+  for (const [holdingId, row] of latest) {
+    const holding = holdingsById.get(holdingId);
+    if (!holding) {
+      continue;
+    }
+    totalYen += holdingValueYen(holding, row);
+  }
+  return totalYen;
+}
+
+export function portfolioValuedHoldingCount(
+  holdings: Holding[],
+  sessions: SnapshotSession[],
+  snapshots: HoldingSnapshot[],
+): number {
+  const latest = latestSnapshotsByHolding(sessions, snapshots);
+  return holdings.filter((holding) => latest.has(holding.id)).length;
+}
+
 export type HoldingPnl = {
   holdingId: string;
   costBasisYen: number | null;

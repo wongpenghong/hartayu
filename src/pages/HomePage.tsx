@@ -9,6 +9,7 @@ import {
   type SpendingPeriod,
 } from "@/components/SpendingTrendCard";
 import { PocketsSummary } from "@/components/PocketsSummary";
+import { PortfolioSummary } from "@/components/PortfolioSummary";
 import { GoalsSummary } from "@/components/GoalsSummary";
 import { categoryNameById } from "@/household/category-utils";
 import { fetchCategories } from "@/household/categories";
@@ -23,6 +24,17 @@ import {
 import { fetchEntries } from "@/household/entries";
 import { fetchGoalContributions, fetchGoals } from "@/household/goals";
 import { fetchPockets } from "@/household/pockets";
+import { fetchHoldings } from "@/household/holdings";
+import {
+  fetchHoldingSnapshots,
+  fetchSnapshotSessions,
+} from "@/household/snapshots";
+import {
+  portfolioPnlSummary,
+  portfolioTotalValueLatest,
+  portfolioValuedHoldingCount,
+} from "@/ledger/portfolio";
+import type { Holding, HoldingSnapshot, SnapshotSession } from "@/ledger/portfolio";
 import { activePockets, defaultPocketId, toLedgerPockets } from "@/household/pocket-utils";
 import { netTone } from "@/household/entry-display";
 import {
@@ -57,6 +69,9 @@ export default function HomePage() {
     Awaited<ReturnType<typeof fetchGoalContributions>>
   >([]);
   const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [snapshotSessions, setSnapshotSessions] = useState<SnapshotSession[]>([]);
+  const [holdingSnapshots, setHoldingSnapshots] = useState<HoldingSnapshot[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [busyBillId, setBusyBillId] = useState<string | null>(null);
   const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>("daily");
@@ -85,6 +100,18 @@ export default function HomePage() {
   const pocketBalances = useMemo(
     () => balancesByPocket(entries, toLedgerPockets(pockets)),
     [entries, pockets],
+  );
+  const portfolioTotalYen = useMemo(
+    () => portfolioTotalValueLatest(holdings, snapshotSessions, holdingSnapshots),
+    [holdingSnapshots, holdings, snapshotSessions],
+  );
+  const portfolioPnl = useMemo(
+    () => portfolioPnlSummary(holdings, snapshotSessions, holdingSnapshots),
+    [holdingSnapshots, holdings, snapshotSessions],
+  );
+  const portfolioValuedCount = useMemo(
+    () => portfolioValuedHoldingCount(holdings, snapshotSessions, holdingSnapshots),
+    [holdingSnapshots, holdings, snapshotSessions],
   );
 
   const spending = useMemo(() => {
@@ -115,21 +142,36 @@ export default function HomePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [nextEntries, nextCategories, nextGoals, nextContributions, nextPockets, nextBills] =
-        await Promise.all([
-          fetchEntries(),
-          fetchCategories(),
-          fetchGoals(),
-          fetchGoalContributions(),
-          fetchPockets(),
-          fetchBills(),
-        ]);
+      const [
+        nextEntries,
+        nextCategories,
+        nextGoals,
+        nextContributions,
+        nextPockets,
+        nextBills,
+        nextHoldings,
+        nextSnapshotSessions,
+        nextHoldingSnapshots,
+      ] = await Promise.all([
+        fetchEntries(),
+        fetchCategories(),
+        fetchGoals(),
+        fetchGoalContributions(),
+        fetchPockets(),
+        fetchBills(),
+        fetchHoldings(),
+        fetchSnapshotSessions(),
+        fetchHoldingSnapshots(),
+      ]);
       setEntries(nextEntries);
       setCategories(nextCategories);
       setGoals(nextGoals);
       setContributions(nextContributions);
       setPockets(nextPockets);
       setBills(nextBills);
+      setHoldings(nextHoldings);
+      setSnapshotSessions(nextSnapshotSessions);
+      setHoldingSnapshots(nextHoldingSnapshots);
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load dashboard",
@@ -258,6 +300,14 @@ export default function HomePage() {
         <PocketsSummary
           pockets={activePocketList}
           balances={pocketBalances}
+          loading={loading}
+        />
+
+        <PortfolioSummary
+          totalValueYen={portfolioTotalYen}
+          holdingCount={holdings.length}
+          valuedHoldingCount={portfolioValuedCount}
+          pnlSummary={portfolioPnl}
           loading={loading}
         />
 

@@ -9,8 +9,10 @@ import {
   latestSessionId,
   latestSnapshotsByHolding,
   portfolioPnlSummary,
+  portfolioTotalValueLatest,
   portfolioTrendPoints,
   portfolioTrendSessionPoints,
+  portfolioValuedHoldingCount,
 } from "./portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "./portfolio";
 
@@ -210,6 +212,23 @@ describe("latestSnapshotsByHolding", () => {
       28_000,
     );
     expect(latestSessionId(sessions)).toBe("s2");
+  });
+});
+
+describe("portfolioTotalValueLatest", () => {
+  it("sums latest snapshot values across holdings", () => {
+    const holdings = [
+      holding({ id: "h1", quantity: 10, costBasisYen: 200_000 }),
+      holding({ id: "h2", quantity: null, costBasisYen: 100_000 }),
+    ];
+    const sessions = [session("s1", "2026-07-31")];
+    const snapshots = [
+      snapshot({ holdingId: "h1", sessionId: "s1", unitPriceYen: 25_000 }),
+      snapshot({ holdingId: "h2", sessionId: "s1", totalValueYen: 150_000 }),
+    ];
+
+    expect(portfolioTotalValueLatest(holdings, sessions, snapshots)).toBe(400_000);
+    expect(portfolioValuedHoldingCount(holdings, sessions, snapshots)).toBe(2);
   });
 });
 
