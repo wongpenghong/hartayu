@@ -28,3 +28,16 @@ export function parseIdrInput(value: string): number | null {
 export function formatIdrInput(amountIdr: number): string {
   return formatIdr(amountIdr);
 }
+
+export function formatIdrDigits(amountIdr: number): string {
+  return amountIdr.toLocaleString("id-ID");
+}
+
+export function formatIdrInputLive(value: string): string {
+  const digits = value.replace(/[^\d]/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  return Number(digits).toLocaleString("id-ID");
+}

@@ -1,5 +1,7 @@
 import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
+import { formatIdrInputLive } from "@/lib/format-idr";
+import { formatYenInputLive } from "@/lib/format-yen";
 import { Link } from "react-router-dom";
 
 export function NativeScaffold({ children }: { children: ReactNode }) {
@@ -265,17 +267,25 @@ export const YenAmountField = forwardRef(function YenAmountField(
   ref: Ref<HTMLInputElement>,
 ) {
   return (
-    <input
-      ref={ref}
-      className={`${inputClassName} text-[28px] font-semibold tabular-nums`}
-      inputMode="numeric"
-      autoComplete="off"
-      placeholder="¥0"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onBlur}
-      disabled={disabled}
-    />
+    <div className="relative">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[28px] font-semibold text-neutral-900/25 dark:text-neutral-100/25"
+      >
+        ¥
+      </span>
+      <input
+        ref={ref}
+        className={`${inputClassName} pl-10 text-[28px] font-semibold tabular-nums`}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="0"
+        value={value}
+        onChange={(event) => onChange(formatYenInputLive(event.target.value))}
+        onBlur={onBlur}
+        disabled={disabled}
+      />
+    </div>
   );
 });
 
@@ -291,16 +301,24 @@ export function IdrAmountField({
   disabled?: boolean;
 }) {
   return (
-    <input
-      className={`${inputClassName} text-[17px] font-medium tabular-nums`}
-      inputMode="numeric"
-      autoComplete="off"
-      placeholder="Rp0 (optional)"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onBlur={onBlur}
-      disabled={disabled}
-    />
+    <div className="relative">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[17px] font-medium text-neutral-900/25 dark:text-neutral-100/25"
+      >
+        Rp
+      </span>
+      <input
+        className={`${inputClassName} pl-11 text-[17px] font-medium tabular-nums`}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="0"
+        value={value}
+        onChange={(event) => onChange(formatIdrInputLive(event.target.value))}
+        onBlur={onBlur}
+        disabled={disabled}
+      />
+    </div>
   );
 }
 

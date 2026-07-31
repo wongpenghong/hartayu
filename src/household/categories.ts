@@ -84,6 +84,30 @@ export async function createCategory(
   return data;
 }
 
+export async function updateCategoryEmoji(
+  categoryId: string,
+  emoji: string | null,
+): Promise<Category> {
+  const emojiError = validateEmoji(emoji);
+  if (emojiError) {
+    throw new Error(emojiError);
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("categories")
+    .update({ emoji: normalizeEmoji(emoji) })
+    .eq("id", categoryId)
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error("Failed to update category icon");
+  }
+
+  return data;
+}
+
 export async function renameCategory(
   categoryId: string,
   name: string,

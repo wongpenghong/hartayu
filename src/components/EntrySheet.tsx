@@ -20,12 +20,12 @@ import { activePockets, defaultPocketId } from "@/household/pocket-utils";
 import type { Entry, EntryKind } from "@/ledger/types";
 import { recentCategoryIds } from "@/ledger/ledger";
 import {
-  formatYenInput,
+  formatYenDigits,
   parseYenInput,
   todayInTokyo,
 } from "@/lib/format-yen";
 import {
-  formatIdrInput,
+  formatIdrDigits,
   parseIdrInput,
 } from "@/lib/format-idr";
 import {
@@ -107,10 +107,10 @@ export function EntrySheet({
 
     if (entry) {
       setKind(entry.kind);
-      setAmountInput(formatYenInput(entry.amountYen));
+      setAmountInput(formatYenDigits(entry.amountYen));
       setForeignAmountInput(
         entry.foreignAmountIdr != null
-          ? formatIdrInput(entry.foreignAmountIdr)
+          ? formatIdrDigits(entry.foreignAmountIdr)
           : "",
       );
       setPocketId(entry.pocketId);
@@ -135,9 +135,33 @@ export function EntrySheet({
     setError(null);
   }, [categories, entry, open, pockets, userId, visiblePockets]);
 
+  const destinationPockets = visiblePockets.filter((pocket) => pocket.id !== pocketId);
+
+  function pickDestinationPocket(fromPocketId: string): string {
+    return (
+      visiblePockets.find((pocket) => pocket.id !== fromPocketId)?.id ?? ""
+    );
+  }
+
+  function handleFromPocketChange(nextFromPocketId: string) {
+    setPocketId(nextFromPocketId);
+    setToPocketId((current) => {
+      if (current && current !== nextFromPocketId) {
+        return current;
+      }
+      return pickDestinationPocket(nextFromPocketId);
+    });
+  }
+
   function handleKindChange(nextKind: SheetKind) {
     setKind(nextKind);
     if (nextKind === "transfer") {
+      setToPocketId((current) => {
+        if (current && current !== pocketId) {
+          return current;
+        }
+        return pickDestinationPocket(pocketId);
+      });
       return;
     }
 
@@ -146,6 +170,17 @@ export function EntrySheet({
       setCategoryId(nextCategories[0]?.id ?? "");
     }
   }
+
+  useEffect(() => {
+    if (!open || kind !== "transfer") {
+      return;
+    }
+
+    const toIsValid = destinationPockets.some((pocket) => pocket.id === toPocketId);
+    if (!toIsValid) {
+      setToPocketId(destinationPockets[0]?.id ?? "");
+    }
+  }, [destinationPockets, kind, open, toPocketId]);
 
   function selectCategory(nextCategoryId: string, focusAmount = false) {
     setCategoryId(nextCategoryId);
@@ -288,8 +323,6 @@ export function EntrySheet({
     (kind === "transfer" || visibleCategories.length > 0) &&
     !busy;
 
-  const destinationPockets = visiblePockets.filter((pocket) => pocket.id !== pocketId);
-
   return (
     <SheetOverlay
       open={open}
@@ -319,7 +352,11 @@ export function EntrySheet({
       {kind === "transfer" ? (
         <>
           <Field label="From pocket">
-            <SelectField value={pocketId} onChange={setPocketId} disabled={busy}>
+            <SelectField
+              value={pocketId}
+              onChange={handleFromPocketChange}
+              disabled={busy}
+            >
               {visiblePockets.length === 0 ? (
                 <option value="">Add a pocket in Settings</option>
               ) : (
@@ -404,13 +441,7 @@ export function EntrySheet({
         <YenAmountField
           ref={amountRef}
           value={amountInput}
-          onChange={(value) => setAmountInput(value.replace(/[^\d¥,\s]/g, ""))}
-          onBlur={() => {
-            const parsed = parseYenInput(amountInput);
-            if (parsed != null) {
-              setAmountInput(formatYenInput(parsed));
-            }
-          }}
+          onChange={setAmountInput}
         />
       </Field>
 
@@ -418,15 +449,7 @@ export function EntrySheet({
         <Field label="Foreign amount (IDR)">
           <IdrAmountField
             value={foreignAmountInput}
-            onChange={(value) =>
-              setForeignAmountInput(value.replace(/[^\dRp.,\s]/gi, ""))
-            }
-            onBlur={() => {
-              const parsed = parseIdrInput(foreignAmountInput);
-              if (parsed != null) {
-                setForeignAmountInput(formatIdrInput(parsed));
-              }
-            }}
+            onChange={setForeignAmountInput}
             disabled={busy}
           />
         </Field>

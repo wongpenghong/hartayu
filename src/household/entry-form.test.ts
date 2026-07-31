@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { validateEntryDraft, validateTransferDraft } from "@/household/entry-form";
-import { formatIdrInput, parseIdrInput } from "@/lib/format-idr";
-import { formatYenInput, parseYenInput, todayInTokyo } from "@/lib/format-yen";
+import { formatIdrInput, formatIdrInputLive, parseIdrInput } from "@/lib/format-idr";
+import { formatYenInput, formatYenInputLive, parseYenInput, todayInTokyo } from "@/lib/format-yen";
 
 describe("parseYenInput", () => {
   it("parses plain and formatted yen strings", () => {
@@ -21,6 +21,18 @@ describe("parseYenInput", () => {
 describe("formatYenInput", () => {
   it("formats integers with yen symbol", () => {
     expect(formatYenInput(1200)).toBe("¥1,200");
+  });
+});
+
+describe("formatYenInputLive", () => {
+  it("adds grouping separators while typing", () => {
+    expect(formatYenInputLive("1000")).toBe("1,000");
+    expect(formatYenInputLive("1000000")).toBe("1,000,000");
+  });
+
+  it("returns empty for blank input", () => {
+    expect(formatYenInputLive("")).toBe("");
+    expect(formatYenInputLive("¥,")).toBe("");
   });
 });
 
@@ -49,6 +61,12 @@ describe("parseIdrInput", () => {
 describe("formatIdrInput", () => {
   it("formats integers with rupiah prefix", () => {
     expect(formatIdrInput(150_000)).toBe("Rp150.000");
+  });
+});
+
+describe("formatIdrInputLive", () => {
+  it("adds grouping separators while typing", () => {
+    expect(formatIdrInputLive("150000")).toBe("150.000");
   });
 });
 

@@ -6,6 +6,7 @@ import {
   createCategory,
   fetchCategories,
   renameCategory,
+  updateCategoryEmoji,
   type Category,
 } from "@/household/categories";
 import { fetchGoalContributions, fetchGoals } from "@/household/goals";
@@ -312,9 +313,6 @@ function CategoriesPanel({
   }
 
   function openEdit(category: Category) {
-    if (category.is_starter) {
-      return;
-    }
     setName(category.name);
     setEmoji(category.emoji ?? "");
     setError(null);
@@ -338,7 +336,9 @@ function CategoriesPanel({
         const created = await createCategory(household.id, name, sheet.kindFilter, emoji);
         onChange([...categories, created]);
       } else if (sheet.kind === "edit") {
-        const updated = await renameCategory(sheet.category.id, name, emoji);
+        const updated = sheet.category.is_starter
+          ? await updateCategoryEmoji(sheet.category.id, emoji)
+          : await renameCategory(sheet.category.id, name, emoji);
         onChange(
           categories.map((row) => (row.id === updated.id ? updated : row)),
         );
@@ -354,6 +354,9 @@ function CategoriesPanel({
   }
 
   const sheetOpen = sheet.kind !== "closed";
+  const nameRequired =
+    sheet.kind === "add" ||
+    (sheet.kind === "edit" && !sheet.category.is_starter);
 
   return (
     <>
@@ -384,8 +387,8 @@ function CategoriesPanel({
       <GroupCard
         footer={
           kindFilter === "expense"
-            ? "Starter categories are fixed. Custom ones can be renamed."
-            : "Income starters stay fixed for stable reporting."
+            ? "Starter names are fixed; tap any category to set its icon."
+            : "Income starter names stay fixed; tap to set an icon."
         }
       >
         <ListRow onClick={openAdd}>
@@ -398,12 +401,13 @@ function CategoriesPanel({
         ) : (
           visible.map((category) =>
             category.is_starter ? (
-              <ListRow key={category.id}>
+              <ListRow key={category.id} onClick={() => openEdit(category)}>
                 <CategoryIcon kind={category.kind} emoji={category.emoji} />
                 <span className="min-w-0 flex-1 truncate text-[17px] text-neutral-500">
                   {category.name}
                 </span>
                 <MemberChip label="Starter" />
+                <span className="text-[20px] text-neutral-300">›</span>
               </ListRow>
             ) : (
               <ListRow key={category.id} onClick={() => openEdit(category)}>
@@ -423,7 +427,13 @@ function CategoriesPanel({
       <SheetOverlay
         open={sheetOpen}
         onClose={closeSheet}
-        title={sheet.kind === "add" ? "New category" : "Rename category"}
+        title={
+          sheet.kind === "add"
+            ? "New category"
+            : sheet.kind === "edit" && sheet.category.is_starter
+              ? "Edit icon"
+              : "Rename category"
+        }
       >
         {sheet.kind === "add" ? (
           <p className="text-[14px] text-neutral-500">
@@ -431,6 +441,11 @@ function CategoriesPanel({
             <span className="font-medium text-neutral-700">
               {sheet.kindFilter === "expense" ? "Expense" : "Income"}
             </span>
+          </p>
+        ) : sheet.kind === "edit" && sheet.category.is_starter ? (
+          <p className="text-[14px] text-neutral-500">
+            Starter category{" "}
+            <span className="font-medium text-neutral-700">{sheet.category.name}</span>
           </p>
         ) : null}
         <Field label="Icon">
@@ -441,11 +456,12 @@ function CategoriesPanel({
             value={name}
             onChange={setName}
             placeholder="Subscriptions"
+            disabled={busy || (sheet.kind === "edit" && sheet.category.is_starter)}
           />
         </Field>
         {error ? <ErrorNote message={error} /> : null}
         <PrimaryAction
-          disabled={busy || !name.trim()}
+          disabled={busy || (nameRequired && !name.trim())}
           onClick={() => void handleSave()}
         >
           {busy ? "Saving…" : "Save"}

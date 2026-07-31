@@ -21,6 +21,19 @@ export function formatYenInput(amountYen: number): string {
   return `¥${amountYen.toLocaleString("ja-JP")}`;
 }
 
+export function formatYenDigits(amountYen: number): string {
+  return amountYen.toLocaleString("ja-JP");
+}
+
+export function formatYenInputLive(value: string): string {
+  const digits = value.replace(/[^\d]/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  return Number(digits).toLocaleString("ja-JP");
+}
+
 export function todayInTokyo(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",

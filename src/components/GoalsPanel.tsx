@@ -12,7 +12,7 @@ import type { Pocket } from "@/household/pockets";
 import { activePockets } from "@/household/pocket-utils";
 import {
   formatYen,
-  formatYenInput,
+  formatYenDigits,
   parseYenInput,
   todayInTokyo,
 } from "@/lib/format-yen";
@@ -83,7 +83,7 @@ export function GoalsPanel({
 
   function openEdit(goal: Goal) {
     setName(goal.name);
-    setTargetInput(formatYenInput(goal.targetAmountYen));
+    setTargetInput(formatYenDigits(goal.targetAmountYen));
     setTargetDate(goal.targetDate ?? "");
     setLinkedPocketId(goal.linkedPocketId ?? "");
     setEmoji(goal.emoji ?? "");
@@ -279,13 +279,7 @@ export function GoalsPanel({
         <Field label="Target amount">
           <YenAmountField
             value={targetInput}
-            onChange={(value) => setTargetInput(value.replace(/[^\d¥,\s]/g, ""))}
-            onBlur={() => {
-              const parsed = parseYenInput(targetInput);
-              if (parsed != null) {
-                setTargetInput(formatYenInput(parsed));
-              }
-            }}
+            onChange={setTargetInput}
           />
         </Field>
         <Field label="Target date">
@@ -332,15 +326,7 @@ export function GoalsPanel({
         <Field label="Amount">
           <YenAmountField
             value={contributionInput}
-            onChange={(value) =>
-              setContributionInput(value.replace(/[^\d¥,\s]/g, ""))
-            }
-            onBlur={() => {
-              const parsed = parseYenInput(contributionInput);
-              if (parsed != null) {
-                setContributionInput(formatYenInput(parsed));
-              }
-            }}
+            onChange={setContributionInput}
           />
         </Field>
         <Field label="Date">

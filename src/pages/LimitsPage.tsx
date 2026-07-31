@@ -15,13 +15,14 @@ import {
   PageBackLink,
   PrimaryAction,
   SheetOverlay,
-  TextField,
+  YenAmountField,
 } from "@/components/NativeUI";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { budgetPace, expenseTotalsByCategory } from "@/ledger/ledger";
 import {
   currentMonthInTokyo,
   formatYen,
+  formatYenDigits,
   parseYenInput,
   todayInTokyo,
 } from "@/lib/format-yen";
@@ -112,7 +113,7 @@ export default function LimitsPage() {
     setEditing(category);
     setLimitInput(
       category.monthly_limit_yen != null
-        ? String(category.monthly_limit_yen)
+        ? formatYenDigits(category.monthly_limit_yen)
         : "",
     );
     setSaveError(null);
@@ -251,11 +252,7 @@ export default function LimitsPage() {
         title={editing ? `${editing.name} limit` : "Limit"}
       >
         <Field label="Monthly limit (yen)">
-          <TextField
-            value={limitInput}
-            onChange={setLimitInput}
-            placeholder="100000"
-          />
+          <YenAmountField value={limitInput} onChange={setLimitInput} />
         </Field>
         <p className="text-[14px] text-neutral-500">
           Leave blank to remove the limit.
