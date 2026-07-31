@@ -81,6 +81,13 @@ export function formatDayGroupHeader(date: string, today: string): string {
   return `${weekday} ${dayMonth}`;
 }
 
+export function formatDailyNetYen(netYen: number): string {
+  if (netYen === 0) {
+    return formatYen(0);
+  }
+  return formatYen(netYen);
+}
+
 export function formatRemainingBudget(remainingYen: number): string {
   if (remainingYen >= 0) {
     return `${formatYen(remainingYen)} left`;

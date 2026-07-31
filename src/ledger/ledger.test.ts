@@ -10,6 +10,7 @@ import {
   expenseTotalsByPocket,
   expenseTotalsByRecentMonths,
   filterEntries,
+  dailyNetYen,
   groupEntriesByDay,
   householdBalance,
   monthlyTotals,
@@ -193,6 +194,78 @@ describe("ledger", () => {
     expect(
       filterEntries(entries, { year: 2026, month: 7, pocketId: "pocket-a" }),
     ).toEqual([entries[0]]);
+  });
+
+  it("filters entries by date range and member segment", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 1_000,
+        entryDate: "2026-07-01",
+        attributedMemberId: "member-a",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 2_000,
+        entryDate: "2026-07-05",
+        attributedMemberId: "member-b",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        kind: "income",
+        amountYen: 50_000,
+        entryDate: "2026-07-05",
+        attributedMemberId: null,
+      }),
+    ];
+
+    expect(
+      filterEntries(entries, {
+        startDate: "2026-07-01",
+        endDate: "2026-07-03",
+      }),
+    ).toEqual([entries[0]]);
+    expect(
+      filterEntries(entries, { memberSegmentId: "member-b" }),
+    ).toEqual([entries[1]]);
+    expect(
+      filterEntries(entries, { memberSegmentId: "family" }),
+    ).toEqual([entries[2]]);
+  });
+
+  it("computes daily net excluding transfers", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "income",
+        amountYen: 10_000,
+        entryDate: "2026-07-01",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 3_000,
+        entryDate: "2026-07-01",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        toPocketId: "pocket-b",
+        kind: "transfer",
+        amountYen: 5_000,
+        entryDate: "2026-07-01",
+      }),
+    ];
+
+    expect(dailyNetYen(entries, "2026-07-01")).toBe(7_000);
+    expect(dailyNetYen(entries, "2026-07-02")).toBe(0);
   });
 
   it("groups monthly totals by category", () => {

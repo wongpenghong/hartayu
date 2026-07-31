@@ -97,6 +97,14 @@ export function monthlyTotals(
   };
 }
 
+export function entryInDateRange(
+  entry: Entry,
+  startDate: string,
+  endDate: string,
+): boolean {
+  return entry.entryDate >= startDate && entry.entryDate <= endDate;
+}
+
 export function filterEntries(entries: Entry[], filter: EntryFilter): Entry[] {
   return entries.filter((entry) => {
     if (filter.pocketId && entry.pocketId !== filter.pocketId) {
@@ -108,11 +116,33 @@ export function filterEntries(entries: Entry[], filter: EntryFilter): Entry[] {
     ) {
       return false;
     }
-    if (filter.year != null && filter.month != null) {
-      return entryInMonth(entry, filter.year, filter.month);
+    if (filter.startDate && filter.endDate) {
+      if (!entryInDateRange(entry, filter.startDate, filter.endDate)) {
+        return false;
+      }
+    } else if (filter.year != null && filter.month != null) {
+      if (!entryInMonth(entry, filter.year, filter.month)) {
+        return false;
+      }
+    }
+    if (
+      filter.memberSegmentId &&
+      attributionSegmentId(entry) !== filter.memberSegmentId
+    ) {
+      return false;
     }
     return true;
   });
+}
+
+export function dailyNetYen(entries: Entry[], date: string): number {
+  return entries
+    .filter((entry) => entry.kind !== "transfer" && entry.entryDate === date)
+    .reduce(
+      (total, entry) =>
+        total + (entry.kind === "income" ? entry.amountYen : -entry.amountYen),
+      0,
+    );
 }
 
 export function monthlyTotalsByCategory(

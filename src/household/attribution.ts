@@ -60,6 +60,22 @@ export function isFamilyAttribution(
   return entry.attributedMemberId === null;
 }
 
+export const ALL_MEMBERS_FILTER_ID = "all";
+
+export function memberFilterOptions(
+  members: HouseholdMember[],
+  userId: string,
+): { value: string; label: string }[] {
+  const options = [{ value: ALL_MEMBERS_FILTER_ID, label: "All" }];
+  options.push({ value: userId, label: "Me" });
+  const partner = partnerMember(members, userId);
+  if (partner) {
+    options.push({ value: partner.user_id, label: partner.username });
+  }
+  options.push({ value: FAMILY_ATTRIBUTION_ID, label: "Family" });
+  return options;
+}
+
 export function canEditEntry(
   entry: Pick<Entry, "memberId" | "attributedMemberId">,
   userId: string | undefined,

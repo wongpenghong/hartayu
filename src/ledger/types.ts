@@ -95,6 +95,9 @@ export type EntryFilter = {
   categoryId?: string;
   year?: number;
   month?: number;
+  startDate?: string;
+  endDate?: string;
+  memberSegmentId?: string;
 };
 
 export type EntryDayGroup = {

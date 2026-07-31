@@ -1,16 +1,17 @@
-import { useState } from "react";
 import type { Entry } from "@/ledger/types";
 import { canEditEntry, entryAttributionLabel } from "@/household/attribution";
 import type { HouseholdMember } from "@/household/members";
 import {
   entryAmountTone,
+  formatDailyNetYen,
   formatDayGroupHeader,
   formatEntryDate,
   formatEntryForeignIdr,
   formatSignedEntryYen,
   formatTransferLabel,
+  netTone,
 } from "@/household/entry-display";
-import { groupEntriesByDay } from "@/ledger/ledger";
+import { dailyNetYen, groupEntriesByDay } from "@/ledger/ledger";
 import type { EntryDayGroup } from "@/ledger/types";
 import { todayInTokyo } from "@/lib/format-yen";
 import {
@@ -107,6 +108,9 @@ function DayGroupSection({
   pocketNameById,
   currentUserId,
   onEditEntry,
+  expanded,
+  onToggle,
+  dailyNet,
 }: {
   group: EntryDayGroup;
   today: string;
@@ -116,8 +120,10 @@ function DayGroupSection({
   pocketNameById: Map<string, string>;
   currentUserId?: string;
   onEditEntry?: (entry: Entry) => void;
+  expanded: boolean;
+  onToggle: () => void;
+  dailyNet: number;
 }) {
-  const [expanded, setExpanded] = useState(true);
   const entryCount = group.entries.length;
 
   return (
@@ -125,11 +131,16 @@ function DayGroupSection({
       <button
         type="button"
         aria-expanded={expanded}
-        onClick={() => setExpanded((value) => !value)}
+        onClick={onToggle}
         className="flex w-full items-center gap-2 border-b border-[#ececee] bg-[#f2f2f7] px-4 py-2 text-left active:bg-[#e8e8ed] dark:border-neutral-800 dark:bg-neutral-950 dark:active:bg-neutral-900"
       >
         <span className="min-w-0 flex-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400">
           {formatDayGroupHeader(group.date, today)}
+        </span>
+        <span
+          className={`text-[13px] font-semibold tabular-nums ${netTone(dailyNet)}`}
+        >
+          {formatDailyNetYen(dailyNet)}
         </span>
         {!expanded ? (
           <span className="text-[13px] tabular-nums text-neutral-400">
@@ -168,6 +179,8 @@ export function EntryList({
   currentUserId,
   onEditEntry,
   groupByDay = false,
+  collapsedDates,
+  onToggleDay,
 }: {
   entries: Entry[];
   members: HouseholdMember[];
@@ -177,25 +190,33 @@ export function EntryList({
   currentUserId?: string;
   onEditEntry?: (entry: Entry) => void;
   groupByDay?: boolean;
+  collapsedDates?: Set<string>;
+  onToggleDay?: (date: string) => void;
 }) {
   const today = todayInTokyo();
 
   if (groupByDay) {
     return (
       <>
-        {groupEntriesByDay(entries).map((group) => (
-          <DayGroupSection
-            key={group.date}
-            group={group}
-            today={today}
-            members={members}
-            categoryNameById={categoryNameById}
-            categoryEmojiById={categoryEmojiById}
-            pocketNameById={pocketNameById}
-            currentUserId={currentUserId}
-            onEditEntry={onEditEntry}
-          />
-        ))}
+        {groupEntriesByDay(entries).map((group) => {
+          const expanded = !collapsedDates?.has(group.date);
+          return (
+            <DayGroupSection
+              key={group.date}
+              group={group}
+              today={today}
+              members={members}
+              categoryNameById={categoryNameById}
+              categoryEmojiById={categoryEmojiById}
+              pocketNameById={pocketNameById}
+              currentUserId={currentUserId}
+              onEditEntry={onEditEntry}
+              expanded={expanded}
+              onToggle={() => onToggleDay?.(group.date)}
+              dailyNet={dailyNetYen(entries, group.date)}
+            />
+          );
+        })}
       </>
     );
   }
