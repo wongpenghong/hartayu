@@ -188,3 +188,109 @@ export function allocationByHoldingLatest(
     .filter((row) => row.totalYen > 0)
     .sort((a, b) => b.totalYen - a.totalYen);
 }
+
+export type HoldingPnl = {
+  holdingId: string;
+  costBasisYen: number | null;
+  valueYen: number | null;
+  pnlYen: number | null;
+  returnPct: number | null;
+  eligible: boolean;
+};
+
+export function holdingPnl(
+  holding: Holding,
+  snapshot: HoldingSnapshot | undefined,
+): HoldingPnl {
+  const costBasisYen = holding.costBasisYen;
+  if (snapshot == null || costBasisYen == null) {
+    return {
+      holdingId: holding.id,
+      costBasisYen,
+      valueYen: snapshot != null ? holdingValueYen(holding, snapshot) : null,
+      pnlYen: null,
+      returnPct: null,
+      eligible: false,
+    };
+  }
+
+  const valueYen = holdingValueYen(holding, snapshot);
+  const pnlYen = valueYen - costBasisYen;
+  const returnPct = (pnlYen / costBasisYen) * 100;
+
+  return {
+    holdingId: holding.id,
+    costBasisYen,
+    valueYen,
+    pnlYen,
+    returnPct,
+    eligible: true,
+  };
+}
+
+export type PortfolioPnlSummary = {
+  totalCostBasisYen: number;
+  totalValueYen: number;
+  totalPnlYen: number;
+  returnPct: number;
+  eligibleCount: number;
+  scopedCount: number;
+};
+
+export function portfolioPnlSummary(
+  holdings: Holding[],
+  sessions: SnapshotSession[],
+  snapshots: HoldingSnapshot[],
+  filterAssetClassId?: string | null,
+): PortfolioPnlSummary | null {
+  const scopedHoldings = filterAssetClassId
+    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
+    : holdings;
+  const latest = latestSnapshotsByHolding(sessions, snapshots);
+
+  let totalCostBasisYen = 0;
+  let totalValueYen = 0;
+  let eligibleCount = 0;
+
+  for (const holding of scopedHoldings) {
+    const row = holdingPnl(holding, latest.get(holding.id));
+    if (!row.eligible || row.costBasisYen == null || row.valueYen == null) {
+      continue;
+    }
+    eligibleCount += 1;
+    totalCostBasisYen += row.costBasisYen;
+    totalValueYen += row.valueYen;
+  }
+
+  if (eligibleCount === 0) {
+    return null;
+  }
+
+  const totalPnlYen = totalValueYen - totalCostBasisYen;
+
+  return {
+    totalCostBasisYen,
+    totalValueYen,
+    totalPnlYen,
+    returnPct: (totalPnlYen / totalCostBasisYen) * 100,
+    eligibleCount,
+    scopedCount: scopedHoldings.length,
+  };
+}
+
+export function holdingsNeedCostBasisHint(
+  holdings: Holding[],
+  sessions: SnapshotSession[],
+  snapshots: HoldingSnapshot[],
+  filterAssetClassId?: string | null,
+): boolean {
+  const scopedHoldings = filterAssetClassId
+    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
+    : holdings;
+  const latest = latestSnapshotsByHolding(sessions, snapshots);
+  const hasSnapshot = scopedHoldings.some((holding) => latest.has(holding.id));
+  const hasEligible = scopedHoldings.some(
+    (holding) => holdingPnl(holding, latest.get(holding.id)).eligible,
+  );
+  return hasSnapshot && !hasEligible;
+}

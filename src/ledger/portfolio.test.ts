@@ -3,9 +3,12 @@ import {
   allocationByAssetClass,
   allocationByAssetClassLatest,
   allocationByHolding,
+  holdingPnl,
   holdingValueYen,
+  holdingsNeedCostBasisHint,
   latestSessionId,
   latestSnapshotsByHolding,
+  portfolioPnlSummary,
   portfolioTrendPoints,
 } from "./portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "./portfolio";
@@ -159,6 +162,105 @@ describe("latestSnapshotsByHolding", () => {
       28_000,
     );
     expect(latestSessionId(sessions)).toBe("s2");
+  });
+});
+
+describe("holdingPnl", () => {
+  it("computes unrealized gain from total cost basis and latest value", () => {
+    const h = holding({
+      id: "h1",
+      quantity: 10,
+      costBasisYen: 200_000,
+    });
+    const s = snapshot({ holdingId: "h1", sessionId: "s1", unitPriceYen: 25_000 });
+
+    expect(holdingPnl(h, s)).toEqual({
+      holdingId: "h1",
+      costBasisYen: 200_000,
+      valueYen: 250_000,
+      pnlYen: 50_000,
+      returnPct: 25,
+      eligible: true,
+    });
+  });
+
+  it("is not eligible without cost basis or snapshot", () => {
+    const h = holding({ id: "h1", costBasisYen: 100_000 });
+    expect(holdingPnl(h, undefined).eligible).toBe(false);
+    expect(
+      holdingPnl(holding({ id: "h2", costBasisYen: null }), snapshot({ holdingId: "h2", sessionId: "s1", totalValueYen: 100_000 }))
+        .eligible,
+    ).toBe(false);
+  });
+});
+
+describe("portfolioPnlSummary", () => {
+  const holdings = [
+    holding({ id: "h1", assetClassId: "stocks", costBasisYen: 200_000, quantity: 10 }),
+    holding({ id: "h2", assetClassId: "stocks", costBasisYen: null, quantity: 5 }),
+    holding({ id: "h3", assetClassId: "collectibles", costBasisYen: 100_000, quantity: null }),
+  ];
+  const sessions = [session("s1", "2026-07-31")];
+  const snapshots = [
+    snapshot({ holdingId: "h1", sessionId: "s1", unitPriceYen: 25_000 }),
+    snapshot({ holdingId: "h2", sessionId: "s1", unitPriceYen: 10_000 }),
+    snapshot({ holdingId: "h3", sessionId: "s1", totalValueYen: 150_000 }),
+  ];
+
+  it("sums eligible holdings only", () => {
+    expect(portfolioPnlSummary(holdings, sessions, snapshots)).toEqual({
+      totalCostBasisYen: 300_000,
+      totalValueYen: 400_000,
+      totalPnlYen: 100_000,
+      returnPct: (100_000 / 300_000) * 100,
+      eligibleCount: 2,
+      scopedCount: 3,
+    });
+  });
+
+  it("scopes summary to one asset class", () => {
+    expect(portfolioPnlSummary(holdings, sessions, snapshots, "stocks")).toEqual({
+      totalCostBasisYen: 200_000,
+      totalValueYen: 250_000,
+      totalPnlYen: 50_000,
+      returnPct: 25,
+      eligibleCount: 1,
+      scopedCount: 2,
+    });
+  });
+
+  it("returns null when no eligible holdings", () => {
+    expect(
+      portfolioPnlSummary(
+        [holding({ id: "h1", costBasisYen: null })],
+        sessions,
+        [snapshot({ holdingId: "h1", sessionId: "s1", totalValueYen: 100_000 })],
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("holdingsNeedCostBasisHint", () => {
+  it("is true when snapshots exist but none are eligible", () => {
+    const holdings = [holding({ id: "h1", costBasisYen: null })];
+    const sessions = [session("s1", "2026-07-31")];
+    const snapshots = [snapshot({ holdingId: "h1", sessionId: "s1", totalValueYen: 100_000 })];
+
+    expect(holdingsNeedCostBasisHint(holdings, sessions, snapshots)).toBe(true);
+  });
+
+  it("is false when at least one holding is eligible", () => {
+    const holdings = [
+      holding({ id: "h1", costBasisYen: null }),
+      holding({ id: "h2", costBasisYen: 50_000, quantity: null }),
+    ];
+    const sessions = [session("s1", "2026-07-31")];
+    const snapshots = [
+      snapshot({ holdingId: "h1", sessionId: "s1", totalValueYen: 100_000 }),
+      snapshot({ holdingId: "h2", sessionId: "s1", totalValueYen: 80_000 }),
+    ];
+
+    expect(holdingsNeedCostBasisHint(holdings, sessions, snapshots)).toBe(false);
   });
 });
 

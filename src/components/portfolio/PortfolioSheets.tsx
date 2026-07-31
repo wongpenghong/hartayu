@@ -76,7 +76,7 @@ export function PortfolioHoldingSheet({
           disabled={busy}
         />
       </Field>
-      <Field label="Cost basis (optional)">
+      <Field label="Total cost (optional)">
         <YenAmountField value={costBasis} onChange={onCostBasisChange} disabled={busy} />
       </Field>
       {error ? <ErrorNote message={error} /> : null}

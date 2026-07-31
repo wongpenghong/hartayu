@@ -31,12 +31,19 @@ import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import {
   allocationByAssetClassLatest,
   allocationByHoldingLatest,
+  holdingPnl,
   holdingValueYen,
+  holdingsNeedCostBasisHint,
   latestSnapshotsByHolding,
+  portfolioPnlSummary,
   portfolioTrendPoints,
 } from "@/ledger/portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "@/ledger/portfolio";
 import { formatYenCompact, parseYenInput, todayInTokyo } from "@/lib/format-yen";
+import {
+  HoldingPnlBadge,
+  PortfolioPnlSummaryCard,
+} from "@/components/portfolio/PortfolioPnlSummary";
 
 type HoldingSheetMode =
   | { kind: "closed" }
@@ -104,6 +111,16 @@ export default function PortfolioPage() {
       color: breakdownColor(index),
     }));
   }, [assetClassNames, classFilter, holdings, sessions, snapshots]);
+
+  const pnlSummary = useMemo(() => {
+    const filterId = classFilter === "all" ? null : classFilter;
+    return portfolioPnlSummary(holdings, sessions, snapshots, filterId);
+  }, [classFilter, holdings, sessions, snapshots]);
+
+  const showCostBasisHint = useMemo(() => {
+    const filterId = classFilter === "all" ? null : classFilter;
+    return holdingsNeedCostBasisHint(holdings, sessions, snapshots, filterId);
+  }, [classFilter, holdings, sessions, snapshots]);
 
   const loadPortfolio = useCallback(async () => {
     setLoading(true);
@@ -326,9 +343,15 @@ export default function PortfolioPage() {
           )}
         </section>
 
+        <PortfolioPnlSummaryCard summary={pnlSummary} loading={loading} />
+
         <GroupCard
           title="Holdings"
-          footer="Cost basis is stored for future P&L but hidden here."
+          footer={
+            showCostBasisHint
+              ? "Add cost basis on holdings to see unrealized P&L."
+              : undefined
+          }
         >
           <ListRow onClick={openAddHolding}>
             <span className="text-[17px] font-medium text-[#007aff]">+ Add holding</span>
@@ -347,6 +370,13 @@ export default function PortfolioPage() {
               const snapshot = latestByHolding.get(holding.id);
               const valueYen =
                 snapshot != null ? holdingValueYen(holding, snapshot) : null;
+              const pnl = holdingPnl(holding, snapshot);
+              const quantityLabel =
+                holding.quantity != null ? ` · ${holding.quantity} units` : " · Total value";
+              const costLabel =
+                holding.costBasisYen != null
+                  ? ` · Cost ${formatYenCompact(holding.costBasisYen)}`
+                  : "";
               return (
                 <ListRow key={holding.id} onClick={() => openEditHolding(holding)}>
                   <span className="min-w-0 flex-1">
@@ -355,11 +385,15 @@ export default function PortfolioPage() {
                     </span>
                     <span className="mt-0.5 block text-[13px] text-neutral-500">
                       {assetClassNames.get(holding.assetClassId) ?? "Class"}
-                      {holding.quantity != null ? ` · ${holding.quantity} units` : " · Total value"}
+                      {quantityLabel}
+                      {costLabel}
                     </span>
                   </span>
-                  <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
-                    {valueYen == null ? "—" : formatYenCompact(valueYen)}
+                  <span className="flex flex-col items-end gap-0.5">
+                    <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
+                      {valueYen == null ? "—" : formatYenCompact(valueYen)}
+                    </span>
+                    <HoldingPnlBadge pnlYen={pnl.pnlYen} returnPct={pnl.returnPct} />
                   </span>
                   <span className="text-[20px] text-neutral-300">›</span>
                 </ListRow>
