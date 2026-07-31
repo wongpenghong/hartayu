@@ -10,6 +10,7 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
     location.pathname === "/more" ||
     location.pathname === "/analysis" ||
     location.pathname === "/budget" ||
+    location.pathname === "/goals" ||
     location.pathname === "/portfolio";
 
   return (

@@ -511,6 +511,7 @@ function CategoriesPanel({
 export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { username, signOut } = useAuth();
   const tabParam = searchParams.get("tab");
   const tab: SettingsTab =
     tabParam === "categories"
@@ -576,6 +577,16 @@ export default function SettingsPage() {
         navigate(`/settings?tab=${nextTab}`);
       }}
     >
+      <GroupCard title="Account">
+        <div className="space-y-3 px-4 py-4">
+          {username ? (
+            <p className="text-[15px] text-neutral-500">Signed in as {username}</p>
+          ) : null}
+          <PrimaryAction variant="secondary" onClick={() => void signOut()}>
+            Sign out
+          </PrimaryAction>
+        </div>
+      </GroupCard>
       <GroupCard title="Appearance">
         <div className="px-4 py-4">
           <Field label="Theme">

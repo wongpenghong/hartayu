@@ -2,12 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
 import { BillsDueSummary } from "@/components/BillsDueSummary";
-import { ExpenseBreakdownCard } from "@/components/ExpenseBreakdownCard";
 import { RemainingBudgetSummary } from "@/components/RemainingBudgetSummary";
-import {
-  SpendingTrendCard,
-  type SpendingPeriod,
-} from "@/components/SpendingTrendCard";
 import { PocketsSummary } from "@/components/PocketsSummary";
 import { PortfolioSummary } from "@/components/PortfolioSummary";
 import { GoalsSummary } from "@/components/GoalsSummary";
@@ -39,24 +34,14 @@ import { activePockets, defaultPocketId, toLedgerPockets } from "@/household/poc
 import { netTone } from "@/household/entry-display";
 import {
   balancesByPocket,
-  expenseTotalForDate,
-  expenseTotalForDateRange,
   monthlyTotals,
   remainingBudgetByCategory,
-  trendPercent,
 } from "@/ledger/ledger";
 import type { Bill } from "@/ledger/types";
 import { ErrorNote } from "@/components/NativeUI";
 import { useRefreshOnFocus, type RefreshOptions } from "@/hooks/useRefreshOnFocus";
 import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
-import {
-  currentMonthInTokyo,
-  currentWeekRangeInTokyo,
-  formatYen,
-  previousWeekRangeInTokyo,
-  todayInTokyo,
-  yesterdayInTokyo,
-} from "@/lib/format-yen";
+import { currentMonthInTokyo, formatYen } from "@/lib/format-yen";
 
 const HOME_PAGE_CACHE = "home-page";
 
@@ -73,7 +58,7 @@ type HomePageCache = {
 };
 
 export default function HomePage() {
-  const { username, household, user, authError, signOut } = useAuth();
+  const { username, household, user, authError } = useAuth();
   const { openAddEntryWithDraft, registerEntryChangeListener } = useEntrySheet();
   const cached = getPageCache<HomePageCache>(HOME_PAGE_CACHE);
   const [entries, setEntries] = useState(cached?.entries ?? []);
@@ -90,7 +75,6 @@ export default function HomePage() {
   );
   const [bills, setBills] = useState<Bill[]>(cached?.bills ?? []);
   const [busyBillId, setBusyBillId] = useState<string | null>(null);
-  const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>("daily");
   const [loading, setLoading] = useState(!hasPageCache(HOME_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -109,7 +93,8 @@ export default function HomePage() {
     [categories],
   );
   const budgetRows = useMemo(
-    () => remainingBudgetByCategory(entries, categories, month.year, month.month, 5),
+    () =>
+      remainingBudgetByCategory(entries, categories, month.year, month.month, 100),
     [categories, entries, month.month, month.year],
   );
   const activePocketList = useMemo(() => activePockets(pockets), [pockets]);
@@ -129,30 +114,6 @@ export default function HomePage() {
     () => portfolioValuedHoldingCount(holdings, snapshotSessions, holdingSnapshots),
     [holdingSnapshots, holdings, snapshotSessions],
   );
-
-  const spending = useMemo(() => {
-    if (spendingPeriod === "daily") {
-      const today = todayInTokyo();
-      const yesterday = yesterdayInTokyo();
-      const current = expenseTotalForDate(entries, today);
-      const previous = expenseTotalForDate(entries, yesterday);
-      return { amountYen: current, trend: trendPercent(current, previous) };
-    }
-
-    const currentRange = currentWeekRangeInTokyo();
-    const previousRange = previousWeekRangeInTokyo();
-    const current = expenseTotalForDateRange(
-      entries,
-      currentRange.start,
-      currentRange.end,
-    );
-    const previous = expenseTotalForDateRange(
-      entries,
-      previousRange.start,
-      previousRange.end,
-    );
-    return { amountYen: current, trend: trendPercent(current, previous) };
-  }, [entries, spendingPeriod]);
 
   const loadDashboard = useCallback(async (options?: RefreshOptions) => {
     if (!options?.background) {
@@ -258,39 +219,18 @@ export default function HomePage() {
   return (
     <>
       <header className="px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-medium text-neutral-500">
-              {month.label}
-            </p>
-            <h1 className="text-[34px] font-bold leading-tight tracking-tight">
-              {household?.name ?? "Hartayu"}
-            </h1>
-            {username ? (
-              <p className="mt-1 text-[15px] text-neutral-500">Hi, {username}</p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-600 shadow-sm dark:bg-neutral-900 dark:text-neutral-300 dark:shadow-none"
-          >
-            Sign out
-          </button>
-        </div>
+        <p className="text-[13px] font-medium text-neutral-500">{month.label}</p>
+        <h1 className="text-[34px] font-bold leading-tight tracking-tight">
+          {household?.name ?? "Hartayu"}
+        </h1>
+        {username ? (
+          <p className="mt-1 text-[15px] text-neutral-500">Hi, {username}</p>
+        ) : null}
       </header>
 
       <main className="flex flex-1 flex-col gap-4 px-4 pb-28">
         {authError ? <ErrorNote message={authError} /> : null}
         {loadError ? <ErrorNote message={loadError} /> : null}
-
-        <SpendingTrendCard
-          period={spendingPeriod}
-          onPeriodChange={setSpendingPeriod}
-          amountYen={spending.amountYen}
-          trendPercent={spending.trend}
-          loading={loading}
-        />
 
         <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
           <p className="text-[13px] font-medium uppercase tracking-wide text-neutral-500">
@@ -317,6 +257,12 @@ export default function HomePage() {
           </div>
         </section>
 
+        <RemainingBudgetSummary
+          rows={budgetRows}
+          categoryNameById={categoriesById}
+          loading={loading}
+        />
+
         <BillsDueSummary
           bills={unpaidBills}
           categories={categories}
@@ -324,6 +270,12 @@ export default function HomePage() {
           onPay={handlePayBill}
           onAlreadyLogged={(bill) => void handleAlreadyLogged(bill)}
           busyBillId={busyBillId}
+        />
+
+        <GoalsSummary
+          goals={goals}
+          contributions={contributions}
+          loading={loading}
         />
 
         <PocketsSummary
@@ -337,26 +289,6 @@ export default function HomePage() {
           holdingCount={holdings.length}
           valuedHoldingCount={portfolioValuedCount}
           pnlSummary={portfolioPnl}
-          loading={loading}
-        />
-
-        <ExpenseBreakdownCard
-          entries={entries}
-          categories={categories}
-          year={month.year}
-          month={month.month}
-          loading={loading}
-        />
-
-        <RemainingBudgetSummary
-          rows={budgetRows}
-          categoryNameById={categoriesById}
-          loading={loading}
-        />
-
-        <GoalsSummary
-          goals={goals}
-          contributions={contributions}
           loading={loading}
         />
       </main>
