@@ -53,3 +53,20 @@ export function attributedMemberIdFromPicker(
 ): string | null {
   return pickerValue === FAMILY_ATTRIBUTION_ID ? null : pickerValue;
 }
+
+export function isFamilyAttribution(
+  entry: Pick<Entry, "attributedMemberId">,
+): boolean {
+  return entry.attributedMemberId === null;
+}
+
+export function canEditEntry(
+  entry: Pick<Entry, "memberId" | "attributedMemberId">,
+  userId: string | undefined,
+): boolean {
+  if (!userId) {
+    return false;
+  }
+
+  return entry.memberId === userId || isFamilyAttribution(entry);
+}

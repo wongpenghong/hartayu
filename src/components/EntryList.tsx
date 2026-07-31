@@ -1,5 +1,5 @@
 import type { Entry } from "@/ledger/types";
-import { entryAttributionLabel } from "@/household/attribution";
+import { canEditEntry, entryAttributionLabel } from "@/household/attribution";
 import type { HouseholdMember } from "@/household/members";
 import {
   entryAmountTone,
@@ -37,7 +37,7 @@ function EntryRow({
   onEditEntry?: (entry: Entry) => void;
   showDate?: boolean;
 }) {
-  const canEdit = entry.memberId === currentUserId;
+  const canEdit = canEditEntry(entry, currentUserId);
   const foreignIdr = formatEntryForeignIdr(entry);
   const isTransfer = entry.kind === "transfer";
   const fromName = pocketNameById.get(entry.pocketId) ?? "Pocket";

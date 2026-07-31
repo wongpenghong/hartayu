@@ -191,5 +191,42 @@ describe.skipIf(!hasIntegrationEnv)("Supabase entries RLS integration", () => {
       .eq("id", recreated!.id);
 
     expect(crossMemberDeleteError).toBeTruthy();
+
+    const { error: joinBError } = await admin.from("household_members").insert({
+      household_id: householdAId!,
+      user_id: userB.id,
+      role: "member",
+    });
+    expect(joinBError).toBeNull();
+
+    const { data: familyEntry, error: familyCreateError } = await clientA
+      .from("entries")
+      .insert({
+        household_id: householdAId!,
+        account_id: pocket!.id,
+        category_id: category!.id,
+        member_id: userA.id,
+        attributed_member_id: null,
+        kind: "expense",
+        amount_yen: 80_000,
+        entry_date: "2026-07-18",
+      })
+      .select("id")
+      .single();
+    expect(familyCreateError).toBeNull();
+
+    const { error: familyCrossUpdateError } = await clientB
+      .from("entries")
+      .update({ amount_yen: 85_000 })
+      .eq("id", familyEntry!.id);
+
+    expect(familyCrossUpdateError).toBeNull();
+
+    const { error: familyCrossDeleteError } = await clientB
+      .from("entries")
+      .delete()
+      .eq("id", familyEntry!.id);
+
+    expect(familyCrossDeleteError).toBeNull();
   });
 });

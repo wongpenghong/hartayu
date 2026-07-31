@@ -3,6 +3,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { EntryFilters } from "@/components/EntryFilters";
 import { EntryList } from "@/components/EntryList";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
+import { canEditEntry } from "@/household/attribution";
 import { categoryEmojiById, categoryNameById } from "@/household/category-utils";
 import { fetchEntries } from "@/household/entries";
 import { fetchHouseholdMembers } from "@/household/members";
@@ -81,7 +82,7 @@ export default function EntriesPage() {
           Transactions
         </h1>
         <p className="mt-1 text-[15px] text-neutral-500">
-          Full history. Tap yours to edit.
+          Full history. Tap yours or family entries to edit.
         </p>
       </header>
 
@@ -110,7 +111,7 @@ export default function EntriesPage() {
               currentUserId={user?.id}
               groupByDay
               onEditEntry={(entry) => {
-                if (entry.memberId === user?.id) {
+                if (canEditEntry(entry, user?.id)) {
                   openEditEntry(entry);
                 }
               }}
