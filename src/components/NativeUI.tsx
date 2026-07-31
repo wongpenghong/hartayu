@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 export function NativeScaffold({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-[#f2f2f7] text-neutral-900">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-[#f2f2f7] text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       {children}
     </div>
   );
@@ -18,7 +18,7 @@ export function PillTabs<T extends string>({
   options: readonly { value: T; label: string }[];
 }) {
   return (
-    <div className="rounded-[10px] bg-[#e3e3e8] p-[3px]">
+    <div className="rounded-[10px] bg-[#e3e3e8] p-[3px] dark:bg-neutral-800">
       <div
         className="grid gap-[3px]"
         style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
@@ -30,8 +30,8 @@ export function PillTabs<T extends string>({
             onClick={() => onChange(option.value)}
             className={`rounded-[8px] py-2 text-[13px] font-semibold transition ${
               value === option.value
-                ? "bg-white text-neutral-900 shadow-sm"
-                : "text-neutral-500"
+                ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
+                : "text-neutral-500 dark:text-neutral-400"
             }`}
           >
             {option.label}
@@ -54,15 +54,15 @@ export function GroupCard({
   return (
     <section>
       {title ? (
-        <h2 className="mb-2 px-4 text-[13px] font-normal uppercase tracking-wide text-neutral-500">
+        <h2 className="mb-2 px-4 text-[13px] font-normal uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
           {title}
         </h2>
       ) : null}
-      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
         {children}
       </div>
       {footer ? (
-        <p className="mt-2 px-4 text-[13px] leading-relaxed text-neutral-500">
+        <p className="mt-2 px-4 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400">
           {footer}
         </p>
       ) : null}
@@ -78,11 +78,15 @@ export function ListRow({
   onClick?: () => void;
 }) {
   const className =
-    "flex w-full items-center gap-3 border-b border-[#ececee] px-4 py-3.5 text-left last:border-b-0";
+    "flex w-full items-center gap-3 border-b border-[#ececee] px-4 py-3.5 text-left last:border-b-0 dark:border-neutral-800";
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={`${className} active:bg-neutral-50`}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${className} active:bg-neutral-50 dark:active:bg-neutral-800`}
+      >
         {children}
       </button>
     );
@@ -114,8 +118,8 @@ export function SheetOverlay({
         className="absolute inset-0"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[#ececee] px-4 py-3">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-neutral-900">
+        <div className="flex items-center justify-between border-b border-[#ececee] px-4 py-3 dark:border-neutral-800">
           <button
             type="button"
             onClick={onClose}
@@ -141,11 +145,16 @@ export function Field({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="text-[13px] font-medium text-neutral-500">{label}</span>
+      <span className="text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
+        {label}
+      </span>
       {children}
     </label>
   );
 }
+
+const inputClassName =
+  "w-full rounded-xl bg-[#f2f2f7] px-3 py-3 outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50 dark:bg-neutral-800 dark:text-neutral-100";
 
 export function TextField({
   value,
@@ -153,21 +162,38 @@ export function TextField({
   placeholder,
   disabled,
   className = "text-[17px]",
+  type = "text",
+  inputMode,
+  pattern,
+  maxLength,
+  autoComplete,
+  required,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  type?: string;
+  inputMode?: "numeric" | "text";
+  pattern?: string;
+  maxLength?: number;
+  autoComplete?: string;
+  required?: boolean;
 }) {
   return (
     <input
-      className={`w-full rounded-xl bg-[#f2f2f7] px-3 py-3 outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50 ${className}`}
-      type="text"
+      className={`${inputClassName} ${className}`}
+      type={type}
+      autoComplete={autoComplete}
+      inputMode={inputMode}
+      pattern={pattern}
+      maxLength={maxLength}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       disabled={disabled}
+      required={required}
     />
   );
 }
@@ -185,7 +211,7 @@ export function YenAmountField({
 }) {
   return (
     <input
-      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[28px] font-semibold tabular-nums outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      className={`${inputClassName} text-[28px] font-semibold tabular-nums`}
       inputMode="numeric"
       autoComplete="off"
       placeholder="¥0"
@@ -210,7 +236,7 @@ export function IdrAmountField({
 }) {
   return (
     <input
-      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] font-medium tabular-nums outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      className={`${inputClassName} text-[17px] font-medium tabular-nums`}
       inputMode="numeric"
       autoComplete="off"
       placeholder="Rp0 (optional)"
@@ -233,7 +259,7 @@ export function DateField({
 }) {
   return (
     <input
-      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      className={`${inputClassName} text-[17px]`}
       type="date"
       value={value}
       onChange={(event) => onChange(event.target.value)}
@@ -253,7 +279,7 @@ export function MonthField({
 }) {
   return (
     <input
-      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      className={`${inputClassName} text-[17px]`}
       type="month"
       value={value}
       onChange={(event) => onChange(event.target.value)}
@@ -275,7 +301,7 @@ export function SelectField({
 }) {
   return (
     <select
-      className="w-full rounded-xl bg-[#f2f2f7] px-3 py-3 text-[17px] outline-none ring-[#007aff] focus:ring-2 disabled:opacity-50"
+      className={`${inputClassName} text-[17px]`}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       disabled={disabled}
@@ -290,21 +316,24 @@ export function PrimaryAction({
   disabled,
   onClick,
   variant = "primary",
+  type = "button",
 }: {
   children: ReactNode;
   disabled?: boolean;
   onClick?: () => void;
   variant?: "primary" | "destructive" | "secondary";
+  type?: "button" | "submit";
 }) {
   const styles = {
     primary: "bg-[#007aff] text-white",
     destructive: "bg-[#ff3b30] text-white",
-    secondary: "bg-[#f2f2f7] text-neutral-900",
+    secondary:
+      "bg-[#f2f2f7] text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100",
   }[variant];
 
   return (
     <button
-      type="button"
+      type={type}
       disabled={disabled}
       onClick={onClick}
       className={`w-full rounded-xl px-4 py-3.5 text-[17px] font-semibold disabled:opacity-50 ${styles}`}
@@ -336,7 +365,7 @@ export function IconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`flex items-center justify-center rounded-full bg-[#007aff] leading-none text-white disabled:bg-neutral-300 ${sizeClass}`}
+      className={`flex items-center justify-center rounded-full bg-[#007aff] leading-none text-white disabled:bg-neutral-300 dark:disabled:bg-neutral-700 ${sizeClass}`}
     >
       +
     </button>
@@ -345,7 +374,7 @@ export function IconButton({
 
 export function ErrorNote({ message }: { message: string }) {
   return (
-    <p className="rounded-xl bg-[#ffebee] px-3 py-2 text-[14px] text-[#c62828]">
+    <p className="rounded-xl bg-[#ffebee] px-3 py-2 text-[14px] text-[#c62828] dark:bg-[#3b1219] dark:text-[#ff8a80]">
       {message}
     </p>
   );
@@ -353,7 +382,7 @@ export function ErrorNote({ message }: { message: string }) {
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <p className="px-4 py-8 text-center text-[15px] text-neutral-500">
+    <p className="px-4 py-8 text-center text-[15px] text-neutral-500 dark:text-neutral-400">
       {message}
     </p>
   );
@@ -384,7 +413,7 @@ export function CategoryIcon({ kind }: { kind: "expense" | "income" }) {
 
 export function MemberChip({ label }: { label: string }) {
   return (
-    <span className="rounded-full bg-[#f2f2f7] px-2 py-0.5 text-[12px] font-medium text-neutral-500">
+    <span className="rounded-full bg-[#f2f2f7] px-2 py-0.5 text-[12px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
       {label}
     </span>
   );
@@ -400,9 +429,9 @@ export function LimitProgressBar({
   const ratio = limitYen > 0 ? Math.min(spentYen / limitYen, 1) : 0;
 
   return (
-    <div className="relative h-2 overflow-hidden rounded-full bg-[#e8f5c4]">
+    <div className="relative h-2 overflow-hidden rounded-full bg-[#e8f5c4] dark:bg-neutral-800">
       <div
-        className="h-full rounded-full bg-neutral-900 transition-all"
+        className="h-full rounded-full bg-neutral-900 transition-all dark:bg-neutral-200"
         style={{ width: `${ratio * 100}%` }}
       />
     </div>

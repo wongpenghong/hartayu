@@ -179,7 +179,7 @@ export default function AnalysisPage() {
           ]}
         />
 
-        <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
           <p className="mb-4 text-[17px] font-semibold">
             {kindFilter === "expense" ? "Expense breakdown" : "Income breakdown"}
           </p>

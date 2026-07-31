@@ -160,13 +160,13 @@ export default function LimitsPage() {
                   key={category.id}
                   type="button"
                   onClick={() => openEditor(category)}
-                  className="w-full border-b border-[#ececee] px-4 py-4 text-left last:border-b-0 active:bg-neutral-50"
+                  className="w-full border-b border-[#ececee] px-4 py-4 text-left last:border-b-0 active:bg-neutral-50 dark:border-neutral-800 dark:active:bg-neutral-800"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[17px] font-medium">{category.name}</span>
                     <span
                       className={`text-[15px] font-semibold tabular-nums ${
-                        over ? "text-[#ff3b30]" : "text-neutral-700"
+                        over ? "text-[#ff3b30]" : "text-neutral-700 dark:text-neutral-300"
                       }`}
                     >
                       {formatYen(spentYen)}/{formatYen(limitYen)}
@@ -188,7 +188,7 @@ export default function LimitsPage() {
                 key={category.id}
                 type="button"
                 onClick={() => openEditor(category)}
-                className="flex w-full items-center justify-between border-b border-[#ececee] px-4 py-3.5 text-left last:border-b-0 active:bg-neutral-50"
+                className="flex w-full items-center justify-between border-b border-[#ececee] px-4 py-3.5 text-left last:border-b-0 active:bg-neutral-50 dark:border-neutral-800 dark:active:bg-neutral-800"
               >
                 <span className="text-[17px] font-medium">{category.name}</span>
                 <span className="text-[15px] font-medium text-[#007aff]">Set limit</span>

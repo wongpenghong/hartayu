@@ -6,7 +6,8 @@ import {
   validatePin,
   validateUsername,
 } from "@/auth/member-auth";
-import { AuthField, AuthShell } from "@/components/AuthLayout";
+import { AuthShell } from "@/components/AuthLayout";
+import { ErrorNote, Field, PrimaryAction, TextField } from "@/components/NativeUI";
 
 export default function SignInPage() {
   const navigate = useNavigate();
@@ -44,39 +45,36 @@ export default function SignInPage() {
       title="Sign in"
       subtitle="Enter your username and 6-digit PIN."
       footer={
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
           Members are created once via the household seed script.
         </p>
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
-        <AuthField
-          label="Username"
-          type="text"
-          autoComplete="username"
-          value={username}
-          onChange={setUsername}
-          required
-        />
-        <AuthField
-          label="PIN"
-          type="password"
-          autoComplete="current-password"
-          inputMode="numeric"
-          pattern="\d{6}"
-          maxLength={6}
-          value={pin}
-          onChange={(value) => setPin(value.replace(/\D/g, "").slice(0, 6))}
-          required
-        />
-        {error ? <p className="text-sm text-rose-400">{error}</p> : null}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
-        >
+        <Field label="Username">
+          <TextField
+            autoComplete="username"
+            value={username}
+            onChange={setUsername}
+            required
+          />
+        </Field>
+        <Field label="PIN">
+          <TextField
+            type="password"
+            autoComplete="current-password"
+            inputMode="numeric"
+            pattern="\d{6}"
+            maxLength={6}
+            value={pin}
+            onChange={(value) => setPin(value.replace(/\D/g, "").slice(0, 6))}
+            required
+          />
+        </Field>
+        {error ? <ErrorNote message={error} /> : null}
+        <PrimaryAction type="submit" disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}
-        </button>
+        </PrimaryAction>
       </form>
     </AuthShell>
   );

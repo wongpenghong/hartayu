@@ -57,7 +57,8 @@ export function DonutChart({
           cy="50"
           r="35"
           fill="none"
-          stroke="#ececee"
+          className="stroke-[#ececee] dark:stroke-neutral-700"
+          stroke="currentColor"
           strokeWidth="14"
         />
       );
@@ -85,7 +86,8 @@ export function DonutChart({
           key={segment.id}
           d={path}
           fill={segment.color}
-          stroke="#ffffff"
+          stroke="currentColor"
+          className="text-white dark:text-neutral-900"
           strokeWidth="0.6"
         />
       );
@@ -119,7 +121,7 @@ export function DonutChart({
               <span className="min-w-0 flex-1 truncate text-[14px] font-medium">
                 {segment.label}
               </span>
-              <span className="text-[14px] font-semibold tabular-nums text-neutral-700">
+              <span className="text-[14px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
                 {formatYen(segment.value)}
               </span>
             </div>

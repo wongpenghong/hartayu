@@ -20,17 +20,17 @@ export function SpendingTrendCard({
   const trendDown = trendPercent != null && trendPercent < 0;
 
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+    <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
       <div className="flex items-start justify-between gap-3">
         <p className="text-[17px] font-semibold">Spending trend</p>
         {trendPercent != null ? (
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-semibold ${
               trendUp
-                ? "bg-[#ffebee] text-[#ff3b30]"
+                ? "bg-[#ffebee] text-[#ff3b30] dark:bg-[#3b1219] dark:text-[#ff8a80]"
                 : trendDown
-                  ? "bg-[#e8f5e9] text-[#34c759]"
-                  : "bg-[#f2f2f7] text-neutral-500"
+                  ? "bg-[#e8f5e9] text-[#34c759] dark:bg-[#1b3a24] dark:text-[#81c784]"
+                  : "bg-[#f2f2f7] text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
             }`}
           >
             {trendUp ? "↑" : trendDown ? "↓" : "•"} {Math.abs(trendPercent)}%
@@ -50,7 +50,7 @@ export function SpendingTrendCard({
       </div>
 
       <div className="mt-4">
-        <p className="text-[40px] font-bold tracking-tight tabular-nums text-neutral-900">
+        <p className="text-[40px] font-bold tracking-tight tabular-nums text-neutral-900 dark:text-neutral-100">
           {loading ? "…" : formatYen(amountYen)}
         </p>
         <p className="mt-1 text-[14px] text-neutral-500">

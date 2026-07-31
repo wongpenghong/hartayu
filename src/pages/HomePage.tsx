@@ -135,7 +135,7 @@ export default function HomePage() {
           <button
             type="button"
             onClick={() => void signOut()}
-            className="rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-600 shadow-sm"
+            className="rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-600 shadow-sm dark:bg-neutral-900 dark:text-neutral-300 dark:shadow-none"
           >
             Sign out
           </button>
@@ -154,7 +154,7 @@ export default function HomePage() {
           loading={loading}
         />
 
-        <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+        <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
           <p className="text-[13px] font-medium uppercase tracking-wide text-neutral-500">
             Net this month
           </p>
@@ -164,14 +164,14 @@ export default function HomePage() {
             {formatYen(totals.netYen)}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-[#f2f2f7] px-3 py-3">
-              <p className="text-[12px] font-medium text-neutral-500">Income</p>
+            <div className="rounded-2xl bg-[#f2f2f7] px-3 py-3 dark:bg-neutral-800">
+              <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">Income</p>
               <p className="mt-1 text-[17px] font-semibold text-[#34c759]">
                 {formatYen(totals.incomeYen)}
               </p>
             </div>
-            <div className="rounded-2xl bg-[#f2f2f7] px-3 py-3">
-              <p className="text-[12px] font-medium text-neutral-500">Expense</p>
+            <div className="rounded-2xl bg-[#f2f2f7] px-3 py-3 dark:bg-neutral-800">
+              <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">Expense</p>
               <p className="mt-1 text-[17px] font-semibold text-[#ff3b30]">
                 {formatYen(totals.expenseYen)}
               </p>

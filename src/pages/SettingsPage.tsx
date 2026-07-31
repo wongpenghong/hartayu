@@ -27,6 +27,7 @@ import {
   IconButton,
   ListRow,
   MemberChip,
+  PillTabs,
   PocketIcon,
   PrimaryAction,
   SelectField,
@@ -34,6 +35,7 @@ import {
   TextField,
 } from "@/components/NativeUI";
 import { SettingsShell, type SettingsTab } from "@/components/SettingsShell";
+import { useTheme } from "@/theme/ThemeProvider";
 
 type PocketSheetMode =
   | { kind: "closed" }
@@ -193,7 +195,7 @@ function PocketsPanel({
           {visibleArchivedPockets.map((pocket) => (
             <div
               key={pocket.id}
-              className="flex items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0"
+              className="flex items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0 dark:border-neutral-800"
             >
               <PocketIcon name={pocket.name} />
               <div className="min-w-0 flex-1">
@@ -345,7 +347,7 @@ function CategoriesPanel({
 
   return (
     <>
-      <div className="rounded-[10px] bg-[#e3e3e8] p-[3px]">
+      <div className="rounded-[10px] bg-[#e3e3e8] p-[3px] dark:bg-neutral-800">
         <div className="grid grid-cols-2 gap-[3px]">
           {(
             [
@@ -359,8 +361,8 @@ function CategoriesPanel({
               onClick={() => setKindFilter(kind)}
               className={`rounded-[8px] py-2 text-[13px] font-semibold transition ${
                 kindFilter === kind
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-500"
+                  ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
+                  : "text-neutral-500 dark:text-neutral-400"
               }`}
             >
               {label}
@@ -471,6 +473,8 @@ export default function SettingsPage() {
     void loadSettings();
   }, [loadSettings]);
 
+  const { theme, setTheme } = useTheme();
+
   return (
     <SettingsShell
       activeTab={tab}
@@ -478,6 +482,20 @@ export default function SettingsPage() {
         navigate(`/settings?tab=${nextTab}`);
       }}
     >
+      <GroupCard title="Appearance">
+        <div className="px-4 py-4">
+          <Field label="Theme">
+            <PillTabs
+              value={theme}
+              onChange={setTheme}
+              options={[
+                { value: "light", label: "Light" },
+                { value: "dark", label: "Dark" },
+              ]}
+            />
+          </Field>
+        </div>
+      </GroupCard>
       {pageError ? <ErrorNote message={pageError} /> : null}
       {tab === "pockets" ? (
         <PocketsPanel
