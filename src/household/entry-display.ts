@@ -23,13 +23,26 @@ export function netTone(netYen: number): string {
 }
 
 export function entryAmountTone(kind: EntryKind): string {
+  if (kind === "transfer") {
+    return "text-[#007aff]";
+  }
   return kind === "income" ? "text-[#34c759]" : "text-[#ff3b30]";
 }
 
 export function formatSignedEntryYen(entry: Pick<Entry, "kind" | "amountYen">): string {
+  if (entry.kind === "transfer") {
+    return formatYen(entry.amountYen);
+  }
   return formatYen(
     entry.kind === "expense" ? -entry.amountYen : entry.amountYen,
   );
+}
+
+export function formatTransferLabel(
+  fromName: string,
+  toName: string,
+): string {
+  return `${fromName} → ${toName}`;
 }
 
 export function formatEntryForeignIdr(

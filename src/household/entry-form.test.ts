@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateEntryDraft } from "@/household/entry-form";
+import { validateEntryDraft, validateTransferDraft } from "@/household/entry-form";
 import { formatIdrInput, parseIdrInput } from "@/lib/format-idr";
 import { formatYenInput, parseYenInput, todayInTokyo } from "@/lib/format-yen";
 
@@ -105,5 +105,34 @@ describe("validateEntryDraft", () => {
         foreignAmountIdr: 150_000,
       }),
     ).toMatch(/amount/i);
+  });
+});
+
+describe("validateTransferDraft", () => {
+  const validDraft = {
+    amountYen: 10_000,
+    fromPocketId: "pocket-a",
+    toPocketId: "pocket-b",
+    entryDate: "2026-07-17",
+    note: "",
+  };
+
+  it("accepts a complete transfer draft", () => {
+    expect(validateTransferDraft(validDraft)).toBeNull();
+  });
+
+  it("requires distinct pockets and positive amount", () => {
+    expect(
+      validateTransferDraft({ ...validDraft, amountYen: null }),
+    ).toMatch(/amount/i);
+    expect(
+      validateTransferDraft({ ...validDraft, fromPocketId: "" }),
+    ).toMatch(/source/i);
+    expect(
+      validateTransferDraft({ ...validDraft, toPocketId: "" }),
+    ).toMatch(/destination/i);
+    expect(
+      validateTransferDraft({ ...validDraft, toPocketId: "pocket-a" }),
+    ).toMatch(/differ/i);
   });
 });

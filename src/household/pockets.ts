@@ -1,3 +1,4 @@
+import { normalizeEmoji, validateEmoji } from "@/household/emoji-utils";
 import { getSupabase } from "@/lib/supabase";
 
 export type Pocket = {
@@ -6,6 +7,7 @@ export type Pocket = {
   name: string;
   primary_member_id: string | null;
   archived_at: string | null;
+  emoji: string | null;
 };
 
 export function validatePocketName(name: string): string | null {
@@ -23,7 +25,7 @@ export async function fetchPockets(): Promise<Pocket[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("accounts")
-    .select("id, household_id, name, primary_member_id, archived_at")
+    .select("id, household_id, name, primary_member_id, archived_at, emoji")
     .order("archived_at", { ascending: true, nullsFirst: true })
     .order("name");
 
@@ -38,10 +40,16 @@ export async function createPocket(
   householdId: string,
   name: string,
   primaryMemberId: string | null = null,
+  emoji: string | null = null,
 ): Promise<Pocket> {
   const nameError = validatePocketName(name);
   if (nameError) {
     throw new Error(nameError);
+  }
+
+  const emojiError = validateEmoji(emoji);
+  if (emojiError) {
+    throw new Error(emojiError);
   }
 
   const supabase = getSupabase();
@@ -51,8 +59,9 @@ export async function createPocket(
       household_id: householdId,
       name: name.trim(),
       primary_member_id: primaryMemberId,
+      emoji: normalizeEmoji(emoji),
     })
-    .select("id, household_id, name, primary_member_id, archived_at")
+    .select("id, household_id, name, primary_member_id, archived_at, emoji")
     .single();
 
   if (error || !data) {
@@ -68,6 +77,7 @@ export async function updatePocket(
     name?: string;
     primary_member_id?: string | null;
     archived_at?: string | null;
+    emoji?: string | null;
   },
 ): Promise<Pocket> {
   if (updates.name !== undefined) {
@@ -77,9 +87,17 @@ export async function updatePocket(
     }
   }
 
+  if (updates.emoji !== undefined) {
+    const emojiError = validateEmoji(updates.emoji);
+    if (emojiError) {
+      throw new Error(emojiError);
+    }
+  }
+
   const payload = {
     ...updates,
     ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+    ...(updates.emoji !== undefined ? { emoji: normalizeEmoji(updates.emoji) } : {}),
   };
 
   const supabase = getSupabase();
@@ -87,7 +105,7 @@ export async function updatePocket(
     .from("accounts")
     .update(payload)
     .eq("id", pocketId)
-    .select("id, household_id, name, primary_member_id, archived_at")
+    .select("id, household_id, name, primary_member_id, archived_at, emoji")
     .single();
 
   if (error || !data) {

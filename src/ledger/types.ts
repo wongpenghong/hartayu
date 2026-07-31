@@ -1,9 +1,10 @@
-export type EntryKind = "expense" | "income";
+export type EntryKind = "expense" | "income" | "transfer";
 
 export type Entry = {
   id: string;
   pocketId: string;
-  categoryId: string;
+  toPocketId: string | null;
+  categoryId: string | null;
   memberId: string;
   kind: EntryKind;
   amountYen: number;
@@ -11,6 +12,34 @@ export type Entry = {
   entryDate: string;
   note: string | null;
   createdAt: string;
+};
+
+export type Goal = {
+  id: string;
+  name: string;
+  targetAmountYen: number;
+  targetDate: string | null;
+  linkedPocketId: string | null;
+  emoji: string | null;
+  createdAt: string;
+};
+
+export type GoalContribution = {
+  id: string;
+  goalId: string;
+  memberId: string;
+  amountYen: number;
+  contributionDate: string;
+  note: string | null;
+  createdAt: string;
+};
+
+export type GoalProgress = {
+  goalId: string;
+  savedYen: number;
+  targetAmountYen: number;
+  progressPercent: number;
+  remainingYen: number;
 };
 
 export type Pocket = {

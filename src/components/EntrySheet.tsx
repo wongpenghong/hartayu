@@ -4,11 +4,16 @@ import {
   categoriesForKind,
   defaultCategoryId,
 } from "@/household/category-utils";
-import { validateEntryDraft } from "@/household/entry-form";
+import {
+  validateEntryDraft,
+  validateTransferDraft,
+} from "@/household/entry-form";
 import {
   createEntry,
+  createTransfer,
   deleteEntry,
   updateEntry,
+  updateTransfer,
 } from "@/household/entries";
 import type { Pocket } from "@/household/pockets";
 import { activePockets, defaultPocketId } from "@/household/pocket-utils";
@@ -37,6 +42,8 @@ import {
   YenAmountField,
 } from "@/components/NativeUI";
 
+type SheetKind = EntryKind;
+
 type EntrySheetProps = {
   open: boolean;
   onClose: () => void;
@@ -64,10 +71,11 @@ export function EntrySheet({
 }: EntrySheetProps) {
   const editing = entry != null;
   const amountRef = useRef<HTMLInputElement>(null);
-  const [kind, setKind] = useState<EntryKind>("expense");
+  const [kind, setKind] = useState<SheetKind>("expense");
   const [amountInput, setAmountInput] = useState("");
   const [foreignAmountInput, setForeignAmountInput] = useState("");
   const [pocketId, setPocketId] = useState("");
+  const [toPocketId, setToPocketId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [entryDate, setEntryDate] = useState(todayInTokyo());
   const [note, setNote] = useState("");
@@ -76,10 +84,14 @@ export function EntrySheet({
 
   const visiblePockets = useMemo(() => activePockets(pockets), [pockets]);
   const visibleCategories = useMemo(
-    () => categoriesForKind(categories, kind),
+    () => (kind === "transfer" ? [] : categoriesForKind(categories, kind)),
     [categories, kind],
   );
   const recentCategories = useMemo(() => {
+    if (kind === "transfer") {
+      return [];
+    }
+
     const recentIds = recentCategoryIds(entries, kind, 5);
     const byId = new Map(visibleCategories.map((category) => [category.id, category]));
 
@@ -102,24 +114,33 @@ export function EntrySheet({
           : "",
       );
       setPocketId(entry.pocketId);
-      setCategoryId(entry.categoryId);
+      setToPocketId(entry.toPocketId ?? "");
+      setCategoryId(entry.categoryId ?? "");
       setEntryDate(entry.entryDate);
       setNote(entry.note ?? "");
     } else {
       setKind("expense");
       setAmountInput("");
       setForeignAmountInput("");
-      setPocketId(defaultPocketId(pockets, userId));
+      const defaultPocket = defaultPocketId(pockets, userId);
+      setPocketId(defaultPocket);
+      setToPocketId(
+        visiblePockets.find((pocket) => pocket.id !== defaultPocket)?.id ?? "",
+      );
       setCategoryId(defaultCategoryId(categories, "expense"));
       setEntryDate(todayInTokyo());
       setNote("");
     }
 
     setError(null);
-  }, [categories, entry, open, pockets, userId]);
+  }, [categories, entry, open, pockets, userId, visiblePockets]);
 
-  function handleKindChange(nextKind: EntryKind) {
+  function handleKindChange(nextKind: SheetKind) {
     setKind(nextKind);
+    if (nextKind === "transfer") {
+      return;
+    }
+
     const nextCategories = categoriesForKind(categories, nextKind);
     if (!nextCategories.some((category) => category.id === categoryId)) {
       setCategoryId(nextCategories[0]?.id ?? "");
@@ -135,6 +156,54 @@ export function EntrySheet({
 
   async function handleSave() {
     const amountYen = parseYenInput(amountInput);
+
+    if (kind === "transfer") {
+      const validationError = validateTransferDraft({
+        amountYen,
+        fromPocketId: pocketId,
+        toPocketId,
+        entryDate,
+        note,
+      });
+
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      setBusy(true);
+      setError(null);
+
+      try {
+        const payload = {
+          amountYen: amountYen!,
+          fromPocketId: pocketId,
+          toPocketId,
+          entryDate,
+          note,
+        };
+
+        if (editing) {
+          await updateTransfer(entry.id, payload);
+        } else {
+          await createTransfer({
+            householdId,
+            memberId: userId,
+            ...payload,
+          });
+        }
+
+        onSaved();
+        onClose();
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Failed to save transfer");
+      } finally {
+        setBusy(false);
+      }
+
+      return;
+    }
+
     const trimmedForeignInput = foreignAmountInput.trim();
     const foreignAmountIdr = trimmedForeignInput
       ? parseIdrInput(trimmedForeignInput)
@@ -215,55 +284,121 @@ export function EntrySheet({
   }
 
   const canSave =
-    visiblePockets.length > 0 &&
-    visibleCategories.length > 0 &&
+    visiblePockets.length >= (kind === "transfer" ? 2 : 1) &&
+    (kind === "transfer" || visibleCategories.length > 0) &&
     !busy;
+
+  const destinationPockets = visiblePockets.filter((pocket) => pocket.id !== pocketId);
 
   return (
     <SheetOverlay
       open={open}
       onClose={onClose}
-      title={editing ? "Edit entry" : "Add entry"}
+      title={
+        editing
+          ? entry?.kind === "transfer"
+            ? "Edit transfer"
+            : "Edit entry"
+          : kind === "transfer"
+            ? "Add transfer"
+            : "Add entry"
+      }
     >
-      <PillTabs
-        value={kind}
-        onChange={handleKindChange}
-        options={[
-          { value: "expense", label: "Expense" },
-          { value: "income", label: "Income" },
-        ]}
-      />
+      {!editing ? (
+        <PillTabs
+          value={kind}
+          onChange={handleKindChange}
+          options={[
+            { value: "expense", label: "Expense" },
+            { value: "income", label: "Income" },
+            { value: "transfer", label: "Transfer" },
+          ]}
+        />
+      ) : null}
 
-      <Field label="Category">
-        {!editing && recentCategories.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {recentCategories.map((category) => (
-              <CategoryChip
-                key={category.id}
-                label={category.name}
-                selected={categoryId === category.id}
-                disabled={busy}
-                onClick={() => selectCategory(category.id, true)}
-              />
-            ))}
-          </div>
-        ) : null}
-        <SelectField
-          value={categoryId}
-          onChange={(value) => selectCategory(value)}
-          disabled={busy}
-        >
-          {visibleCategories.length === 0 ? (
-            <option value="">No categories for this type</option>
-          ) : (
-            visibleCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))
-          )}
-        </SelectField>
-      </Field>
+      {kind === "transfer" ? (
+        <>
+          <Field label="From pocket">
+            <SelectField value={pocketId} onChange={setPocketId} disabled={busy}>
+              {visiblePockets.length === 0 ? (
+                <option value="">Add a pocket in Settings</option>
+              ) : (
+                visiblePockets.map((pocket) => (
+                  <option key={pocket.id} value={pocket.id}>
+                    {pocket.emoji ? `${pocket.emoji} ` : ""}
+                    {pocket.name}
+                  </option>
+                ))
+              )}
+            </SelectField>
+          </Field>
+
+          <Field label="To pocket">
+            <SelectField value={toPocketId} onChange={setToPocketId} disabled={busy}>
+              {destinationPockets.length === 0 ? (
+                <option value="">Choose another pocket</option>
+              ) : (
+                destinationPockets.map((pocket) => (
+                  <option key={pocket.id} value={pocket.id}>
+                    {pocket.emoji ? `${pocket.emoji} ` : ""}
+                    {pocket.name}
+                  </option>
+                ))
+              )}
+            </SelectField>
+          </Field>
+        </>
+      ) : (
+        <>
+          <Field label="Category">
+            {!editing && recentCategories.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {recentCategories.map((category) => (
+                  <CategoryChip
+                    key={category.id}
+                    label={category.name}
+                    emoji={category.emoji}
+                    selected={categoryId === category.id}
+                    disabled={busy}
+                    onClick={() => selectCategory(category.id, true)}
+                  />
+                ))}
+              </div>
+            ) : null}
+            <SelectField
+              value={categoryId}
+              onChange={(value) => selectCategory(value)}
+              disabled={busy}
+            >
+              {visibleCategories.length === 0 ? (
+                <option value="">No categories for this type</option>
+              ) : (
+                visibleCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.emoji ? `${category.emoji} ` : ""}
+                    {category.name}
+                  </option>
+                ))
+              )}
+            </SelectField>
+          </Field>
+
+          <Field label="Pocket">
+            <SelectField value={pocketId} onChange={setPocketId} disabled={busy}>
+              {visiblePockets.length === 0 ? (
+                <option value="">Add a pocket in Settings</option>
+              ) : (
+                visiblePockets.map((pocket) => (
+                  <option key={pocket.id} value={pocket.id}>
+                    {pocket.emoji ? `${pocket.emoji} ` : ""}
+                    {pocket.name}
+                  </option>
+                ))
+              )}
+            </SelectField>
+          </Field>
+        </>
+      )}
 
       <Field label="Amount">
         <YenAmountField
@@ -279,35 +414,23 @@ export function EntrySheet({
         />
       </Field>
 
-      <Field label="Foreign amount (IDR)">
-        <IdrAmountField
-          value={foreignAmountInput}
-          onChange={(value) =>
-            setForeignAmountInput(value.replace(/[^\dRp.,\s]/gi, ""))
-          }
-          onBlur={() => {
-            const parsed = parseIdrInput(foreignAmountInput);
-            if (parsed != null) {
-              setForeignAmountInput(formatIdrInput(parsed));
+      {kind !== "transfer" ? (
+        <Field label="Foreign amount (IDR)">
+          <IdrAmountField
+            value={foreignAmountInput}
+            onChange={(value) =>
+              setForeignAmountInput(value.replace(/[^\dRp.,\s]/gi, ""))
             }
-          }}
-          disabled={busy}
-        />
-      </Field>
-
-      <Field label="Pocket">
-        <SelectField value={pocketId} onChange={setPocketId} disabled={busy}>
-          {visiblePockets.length === 0 ? (
-            <option value="">Add a pocket in Settings</option>
-          ) : (
-            visiblePockets.map((pocket) => (
-              <option key={pocket.id} value={pocket.id}>
-                {pocket.name}
-              </option>
-            ))
-          )}
-        </SelectField>
-      </Field>
+            onBlur={() => {
+              const parsed = parseIdrInput(foreignAmountInput);
+              if (parsed != null) {
+                setForeignAmountInput(formatIdrInput(parsed));
+              }
+            }}
+            disabled={busy}
+          />
+        </Field>
+      ) : null}
 
       <Field label="Date">
         <DateField
@@ -329,7 +452,13 @@ export function EntrySheet({
       {error ? <ErrorNote message={error} /> : null}
 
       <PrimaryAction disabled={!canSave} onClick={() => void handleSave()}>
-        {busy ? "Saving…" : editing ? "Save changes" : "Save entry"}
+        {busy
+          ? "Saving…"
+          : editing
+            ? "Save changes"
+            : kind === "transfer"
+              ? "Save transfer"
+              : "Save entry"}
       </PrimaryAction>
 
       {editing ? (
@@ -338,7 +467,7 @@ export function EntrySheet({
           disabled={busy}
           onClick={() => void handleDelete()}
         >
-          {busy ? "Deleting…" : "Delete entry"}
+          {busy ? "Deleting…" : entry?.kind === "transfer" ? "Delete transfer" : "Delete entry"}
         </PrimaryAction>
       ) : null}
     </SheetOverlay>

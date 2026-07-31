@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { GoalsPanel } from "@/components/GoalsPanel";
 import {
   createCategory,
   fetchCategories,
   renameCategory,
   type Category,
 } from "@/household/categories";
+import { fetchGoalContributions, fetchGoals } from "@/household/goals";
 import { fetchHouseholdMembers, type HouseholdMember } from "@/household/members";
 import { memberName } from "@/household/member-utils";
 import {
@@ -21,6 +23,7 @@ import { activePockets, archivedPockets } from "@/household/pocket-utils";
 import {
   CategoryIcon,
   EmptyState,
+  EmojiField,
   ErrorNote,
   Field,
   GroupCard,
@@ -59,6 +62,7 @@ function PocketsPanel({
 }) {
   const [sheet, setSheet] = useState<PocketSheetMode>({ kind: "closed" });
   const [name, setName] = useState("");
+  const [emoji, setEmoji] = useState("");
   const [primaryMemberId, setPrimaryMemberId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +73,7 @@ function PocketsPanel({
 
   function openAdd() {
     setName("");
+    setEmoji("");
     setPrimaryMemberId("");
     setError(null);
     setSheet({ kind: "add" });
@@ -76,6 +81,7 @@ function PocketsPanel({
 
   function openEdit(pocket: Pocket) {
     setName(pocket.name);
+    setEmoji(pocket.emoji ?? "");
     setPrimaryMemberId(pocket.primary_member_id ?? "");
     setError(null);
     setSheet({ kind: "edit", pocket });
@@ -99,12 +105,14 @@ function PocketsPanel({
           household.id,
           name,
           primaryMemberId || null,
+          emoji,
         );
         onChange([...pockets, created]);
       } else if (sheet.kind === "edit") {
         const updated = await updatePocket(sheet.pocket.id, {
           name,
           primary_member_id: primaryMemberId || null,
+          emoji,
         });
         onChange(pockets.map((row) => (row.id === updated.id ? updated : row)));
       }
@@ -172,7 +180,7 @@ function PocketsPanel({
               : null;
             return (
               <ListRow key={pocket.id} onClick={() => openEdit(pocket)}>
-                <PocketIcon name={pocket.name} />
+                <PocketIcon name={pocket.name} emoji={pocket.emoji} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[17px] font-medium">
                     {pocket.name}
@@ -197,7 +205,7 @@ function PocketsPanel({
               key={pocket.id}
               className="flex items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0 dark:border-neutral-800"
             >
-              <PocketIcon name={pocket.name} />
+              <PocketIcon name={pocket.name} emoji={pocket.emoji} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[17px] text-neutral-500">{pocket.name}</p>
                 <p className="text-[13px] text-neutral-400">Hidden from active lists</p>
@@ -222,6 +230,9 @@ function PocketsPanel({
         onClose={closeSheet}
         title={sheet.kind === "add" ? "New pocket" : "Edit pocket"}
       >
+        <Field label="Icon">
+          <EmojiField value={emoji} onChange={setEmoji} disabled={editingArchived} />
+        </Field>
         <Field label="Name">
           <TextField
             value={name}
@@ -286,6 +297,7 @@ function CategoriesPanel({
   const [kindFilter, setKindFilter] = useState<"expense" | "income">("expense");
   const [sheet, setSheet] = useState<CategorySheetMode>({ kind: "closed" });
   const [name, setName] = useState("");
+  const [emoji, setEmoji] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { household } = useAuth();
@@ -294,6 +306,7 @@ function CategoriesPanel({
 
   function openAdd() {
     setName("");
+    setEmoji("");
     setError(null);
     setSheet({ kind: "add", kindFilter });
   }
@@ -303,6 +316,7 @@ function CategoriesPanel({
       return;
     }
     setName(category.name);
+    setEmoji(category.emoji ?? "");
     setError(null);
     setSheet({ kind: "edit", category });
   }
@@ -321,10 +335,10 @@ function CategoriesPanel({
     setError(null);
     try {
       if (sheet.kind === "add") {
-        const created = await createCategory(household.id, name, sheet.kindFilter);
+        const created = await createCategory(household.id, name, sheet.kindFilter, emoji);
         onChange([...categories, created]);
       } else if (sheet.kind === "edit") {
-        const updated = await renameCategory(sheet.category.id, name);
+        const updated = await renameCategory(sheet.category.id, name, emoji);
         onChange(
           categories.map((row) => (row.id === updated.id ? updated : row)),
         );
@@ -385,7 +399,7 @@ function CategoriesPanel({
           visible.map((category) =>
             category.is_starter ? (
               <ListRow key={category.id}>
-                <CategoryIcon kind={category.kind} />
+                <CategoryIcon kind={category.kind} emoji={category.emoji} />
                 <span className="min-w-0 flex-1 truncate text-[17px] text-neutral-500">
                   {category.name}
                 </span>
@@ -393,7 +407,7 @@ function CategoriesPanel({
               </ListRow>
             ) : (
               <ListRow key={category.id} onClick={() => openEdit(category)}>
-                <CategoryIcon kind={category.kind} />
+                <CategoryIcon kind={category.kind} emoji={category.emoji} />
                 <span className="min-w-0 flex-1 truncate text-[17px] font-medium">
                   {category.name}
                 </span>
@@ -419,6 +433,9 @@ function CategoriesPanel({
             </span>
           </p>
         ) : null}
+        <Field label="Icon">
+          <EmojiField value={emoji} onChange={setEmoji} disabled={busy} />
+        </Field>
         <Field label="Name">
           <TextField
             value={name}
@@ -442,9 +459,18 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tabParam = searchParams.get("tab");
-  const tab: SettingsTab = tabParam === "categories" ? "categories" : "pockets";
+  const tab: SettingsTab =
+    tabParam === "categories"
+      ? "categories"
+      : tabParam === "goals"
+        ? "goals"
+        : "pockets";
   const [pockets, setPockets] = useState<Pocket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [goals, setGoals] = useState<Awaited<ReturnType<typeof fetchGoals>>>([]);
+  const [contributions, setContributions] = useState<
+    Awaited<ReturnType<typeof fetchGoalContributions>>
+  >([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -453,14 +479,19 @@ export default function SettingsPage() {
     setLoading(true);
     setPageError(null);
     try {
-      const [nextPockets, nextCategories, nextMembers] = await Promise.all([
-        fetchPockets(),
-        fetchCategories(),
-        fetchHouseholdMembers(),
-      ]);
+      const [nextPockets, nextCategories, nextMembers, nextGoals, nextContributions] =
+        await Promise.all([
+          fetchPockets(),
+          fetchCategories(),
+          fetchHouseholdMembers(),
+          fetchGoals(),
+          fetchGoalContributions(),
+        ]);
       setPockets(nextPockets);
       setCategories(nextCategories);
       setMembers(nextMembers);
+      setGoals(nextGoals);
+      setContributions(nextContributions);
     } catch (caught) {
       setPageError(
         caught instanceof Error ? caught.message : "Failed to load settings",
@@ -505,11 +536,20 @@ export default function SettingsPage() {
           loading={loading}
           onChange={setPockets}
         />
-      ) : (
+      ) : tab === "categories" ? (
         <CategoriesPanel
           categories={categories}
           loading={loading}
           onChange={setCategories}
+        />
+      ) : (
+        <GoalsPanel
+          goals={goals}
+          contributions={contributions}
+          pockets={pockets}
+          loading={loading}
+          onGoalsChange={setGoals}
+          onContributionsChange={setContributions}
         />
       )}
     </SettingsShell>

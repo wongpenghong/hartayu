@@ -1,3 +1,4 @@
+import { normalizeEmoji, validateEmoji } from "@/household/emoji-utils";
 import { getSupabase } from "@/lib/supabase";
 
 export type Category = {
@@ -7,6 +8,7 @@ export type Category = {
   kind: "expense" | "income";
   is_starter: boolean;
   monthly_limit_yen: number | null;
+  emoji: string | null;
 };
 
 export function validateCategoryName(name: string): string | null {
@@ -34,7 +36,7 @@ export async function fetchCategories(): Promise<Category[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
     .order("kind")
     .order("is_starter", { ascending: false })
     .order("name");
@@ -50,10 +52,16 @@ export async function createCategory(
   householdId: string,
   name: string,
   kind: "expense" | "income",
+  emoji: string | null = null,
 ): Promise<Category> {
   const nameError = validateCategoryName(name);
   if (nameError) {
     throw new Error(nameError);
+  }
+
+  const emojiError = validateEmoji(emoji);
+  if (emojiError) {
+    throw new Error(emojiError);
   }
 
   const supabase = getSupabase();
@@ -64,8 +72,9 @@ export async function createCategory(
       name: name.trim(),
       kind,
       is_starter: false,
+      emoji: normalizeEmoji(emoji),
     })
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
     .single();
 
   if (error || !data) {
@@ -78,19 +87,30 @@ export async function createCategory(
 export async function renameCategory(
   categoryId: string,
   name: string,
+  emoji?: string | null,
 ): Promise<Category> {
   const nameError = validateCategoryName(name);
   if (nameError) {
     throw new Error(nameError);
   }
 
+  if (emoji !== undefined) {
+    const emojiError = validateEmoji(emoji);
+    if (emojiError) {
+      throw new Error(emojiError);
+    }
+  }
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("categories")
-    .update({ name: name.trim() })
+    .update({
+      name: name.trim(),
+      ...(emoji !== undefined ? { emoji: normalizeEmoji(emoji) } : {}),
+    })
     .eq("id", categoryId)
     .eq("is_starter", false)
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
     .single();
 
   if (error || !data) {
@@ -114,7 +134,7 @@ export async function updateCategoryLimit(
     .from("categories")
     .update({ monthly_limit_yen: monthlyLimitYen })
     .eq("id", categoryId)
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen")
+    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
     .single();
 
   if (error || !data) {

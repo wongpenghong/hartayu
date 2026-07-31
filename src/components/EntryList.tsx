@@ -7,6 +7,7 @@ import {
   formatEntryDate,
   formatEntryForeignIdr,
   formatSignedEntryYen,
+  formatTransferLabel,
 } from "@/household/entry-display";
 import { groupEntriesByDay } from "@/ledger/ledger";
 import { todayInTokyo } from "@/lib/format-yen";
@@ -14,12 +15,14 @@ import {
   CategoryIcon,
   ListRow,
   MemberChip,
+  TransferIcon,
 } from "@/components/NativeUI";
 
 function EntryRow({
   entry,
   members,
   categoryNameById,
+  categoryEmojiById,
   pocketNameById,
   currentUserId,
   onEditEntry,
@@ -28,6 +31,7 @@ function EntryRow({
   entry: Entry;
   members: HouseholdMember[];
   categoryNameById: Map<string, string>;
+  categoryEmojiById: Map<string, string | null>;
   pocketNameById: Map<string, string>;
   currentUserId?: string;
   onEditEntry?: (entry: Entry) => void;
@@ -35,18 +39,37 @@ function EntryRow({
 }) {
   const canEdit = entry.memberId === currentUserId;
   const foreignIdr = formatEntryForeignIdr(entry);
+  const isTransfer = entry.kind === "transfer";
+  const fromName = pocketNameById.get(entry.pocketId) ?? "Pocket";
+  const toName =
+    entry.toPocketId != null
+      ? (pocketNameById.get(entry.toPocketId) ?? "Pocket")
+      : "Pocket";
 
   return (
     <ListRow
       onClick={canEdit && onEditEntry ? () => onEditEntry(entry) : undefined}
     >
-      <CategoryIcon kind={entry.kind} />
+      {isTransfer ? (
+        <TransferIcon />
+      ) : (
+        <CategoryIcon
+          kind={entry.kind === "income" ? "income" : "expense"}
+          emoji={
+            entry.categoryId != null
+              ? categoryEmojiById.get(entry.categoryId)
+              : null
+          }
+        />
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[17px] font-medium">
-          {categoryNameById.get(entry.categoryId) ?? "Category"}
+          {isTransfer
+            ? formatTransferLabel(fromName, toName)
+            : (categoryNameById.get(entry.categoryId ?? "") ?? "Category")}
         </span>
         <span className="mt-0.5 block truncate text-[13px] text-neutral-500">
-          {pocketNameById.get(entry.pocketId) ?? "Pocket"}
+          {isTransfer ? "Transfer" : fromName}
           {foreignIdr ? ` · ${foreignIdr}` : ""}
           {entry.note ? ` · ${entry.note}` : ""}
         </span>
@@ -77,6 +100,7 @@ export function EntryList({
   entries,
   members,
   categoryNameById,
+  categoryEmojiById,
   pocketNameById,
   currentUserId,
   onEditEntry,
@@ -85,6 +109,7 @@ export function EntryList({
   entries: Entry[];
   members: HouseholdMember[];
   categoryNameById: Map<string, string>;
+  categoryEmojiById: Map<string, string | null>;
   pocketNameById: Map<string, string>;
   currentUserId?: string;
   onEditEntry?: (entry: Entry) => void;
@@ -106,6 +131,7 @@ export function EntryList({
                 entry={entry}
                 members={members}
                 categoryNameById={categoryNameById}
+                categoryEmojiById={categoryEmojiById}
                 pocketNameById={pocketNameById}
                 currentUserId={currentUserId}
                 onEditEntry={onEditEntry}
@@ -126,6 +152,7 @@ export function EntryList({
           entry={entry}
           members={members}
           categoryNameById={categoryNameById}
+          categoryEmojiById={categoryEmojiById}
           pocketNameById={pocketNameById}
           currentUserId={currentUserId}
           onEditEntry={onEditEntry}

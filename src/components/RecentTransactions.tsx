@@ -8,6 +8,7 @@ export function RecentTransactions({
   entries,
   members,
   categoryNameById,
+  categoryEmojiById,
   pocketNameById,
   currentUserId,
   onEditEntry,
@@ -16,6 +17,7 @@ export function RecentTransactions({
   entries: Entry[];
   members: HouseholdMember[];
   categoryNameById: Map<string, string>;
+  categoryEmojiById: Map<string, string | null>;
   pocketNameById: Map<string, string>;
   currentUserId?: string;
   onEditEntry?: (entry: Entry) => void;
@@ -39,6 +41,7 @@ export function RecentTransactions({
             entries={entries}
             members={members}
             categoryNameById={categoryNameById}
+            categoryEmojiById={categoryEmojiById}
             pocketNameById={pocketNameById}
             currentUserId={currentUserId}
             onEditEntry={onEditEntry}

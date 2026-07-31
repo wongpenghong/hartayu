@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
-import { RecentTransactions } from "@/components/RecentTransactions";
+import { ExpenseBreakdownCard } from "@/components/ExpenseBreakdownCard";
 import { RemainingBudgetSummary } from "@/components/RemainingBudgetSummary";
 import {
   SpendingTrendCard,
   type SpendingPeriod,
 } from "@/components/SpendingTrendCard";
+import { GoalsSummary } from "@/components/GoalsSummary";
 import { categoryNameById } from "@/household/category-utils";
 import { fetchCategories } from "@/household/categories";
 import { fetchEntries } from "@/household/entries";
-import { fetchHouseholdMembers } from "@/household/members";
-import { fetchPockets } from "@/household/pockets";
-import { pocketNameById } from "@/household/pocket-utils";
+import { fetchGoalContributions, fetchGoals } from "@/household/goals";
 import { netTone } from "@/household/entry-display";
 import {
   expenseTotalForDate,
   expenseTotalForDateRange,
   monthlyTotals,
-  recentEntries,
   remainingBudgetByCategory,
   trendPercent,
 } from "@/ledger/ledger";
@@ -34,15 +32,15 @@ import {
 } from "@/lib/format-yen";
 
 export default function HomePage() {
-  const { username, household, user, authError, signOut } = useAuth();
-  const { openEditEntry, registerEntryChangeListener } = useEntrySheet();
+  const { username, household, authError, signOut } = useAuth();
+  const { registerEntryChangeListener } = useEntrySheet();
   const [entries, setEntries] = useState<Awaited<ReturnType<typeof fetchEntries>>>([]);
-  const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
   const [categories, setCategories] = useState<
     Awaited<ReturnType<typeof fetchCategories>>
   >([]);
-  const [members, setMembers] = useState<
-    Awaited<ReturnType<typeof fetchHouseholdMembers>>
+  const [goals, setGoals] = useState<Awaited<ReturnType<typeof fetchGoals>>>([]);
+  const [contributions, setContributions] = useState<
+    Awaited<ReturnType<typeof fetchGoalContributions>>
   >([]);
   const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>("daily");
   const [loading, setLoading] = useState(true);
@@ -57,8 +55,6 @@ export default function HomePage() {
     () => categoryNameById(categories),
     [categories],
   );
-  const pocketsById = useMemo(() => pocketNameById(pockets), [pockets]);
-  const recent = useMemo(() => recentEntries(entries, 5), [entries]);
   const budgetRows = useMemo(
     () => remainingBudgetByCategory(entries, categories, month.year, month.month, 5),
     [categories, entries, month.month, month.year],
@@ -92,17 +88,17 @@ export default function HomePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [nextEntries, nextPockets, nextCategories, nextMembers] =
+      const [nextEntries, nextCategories, nextGoals, nextContributions] =
         await Promise.all([
           fetchEntries(),
-          fetchPockets(),
           fetchCategories(),
-          fetchHouseholdMembers(),
+          fetchGoals(),
+          fetchGoalContributions(),
         ]);
       setEntries(nextEntries);
-      setPockets(nextPockets);
       setCategories(nextCategories);
-      setMembers(nextMembers);
+      setGoals(nextGoals);
+      setContributions(nextContributions);
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load dashboard",
@@ -185,23 +181,23 @@ export default function HomePage() {
           </div>
         </section>
 
+        <ExpenseBreakdownCard
+          entries={entries}
+          categories={categories}
+          year={month.year}
+          month={month.month}
+          loading={loading}
+        />
+
         <RemainingBudgetSummary
           rows={budgetRows}
           categoryNameById={categoriesById}
           loading={loading}
         />
 
-        <RecentTransactions
-          entries={recent}
-          members={members}
-          categoryNameById={categoriesById}
-          pocketNameById={pocketsById}
-          currentUserId={user?.id}
-          onEditEntry={(entry) => {
-            if (entry.memberId === user?.id) {
-              openEditEntry(entry);
-            }
-          }}
+        <GoalsSummary
+          goals={goals}
+          contributions={contributions}
           loading={loading}
         />
       </main>

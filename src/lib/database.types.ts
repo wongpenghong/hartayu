@@ -12,6 +12,7 @@ export type Database = {
       accounts: {
         Row: {
           archived_at: string | null;
+          emoji: string | null;
           household_id: string;
           id: string;
           name: string;
@@ -19,6 +20,7 @@ export type Database = {
         };
         Insert: {
           archived_at?: string | null;
+          emoji?: string | null;
           household_id: string;
           id?: string;
           name: string;
@@ -26,6 +28,7 @@ export type Database = {
         };
         Update: {
           archived_at?: string | null;
+          emoji?: string | null;
           household_id?: string;
           id?: string;
           name?: string;
@@ -35,6 +38,7 @@ export type Database = {
       };
       categories: {
         Row: {
+          emoji: string | null;
           household_id: string;
           id: string;
           is_starter: boolean;
@@ -43,6 +47,7 @@ export type Database = {
           name: string;
         };
         Insert: {
+          emoji?: string | null;
           household_id: string;
           id?: string;
           is_starter?: boolean;
@@ -51,6 +56,7 @@ export type Database = {
           name: string;
         };
         Update: {
+          emoji?: string | null;
           household_id?: string;
           id?: string;
           is_starter?: boolean;
@@ -64,44 +70,113 @@ export type Database = {
         Row: {
           account_id: string;
           amount_yen: number;
-          category_id: string;
+          category_id: string | null;
           created_at: string;
           entry_date: string;
           foreign_amount_idr: number | null;
           household_id: string;
           id: string;
-          kind: "expense" | "income";
+          kind: "expense" | "income" | "transfer";
           member_id: string;
           note: string | null;
+          to_account_id: string | null;
           updated_at: string;
         };
         Insert: {
           account_id: string;
           amount_yen: number;
-          category_id: string;
+          category_id?: string | null;
           created_at?: string;
           entry_date: string;
           foreign_amount_idr?: number | null;
           household_id: string;
           id?: string;
-          kind: "expense" | "income";
+          kind: "expense" | "income" | "transfer";
           member_id: string;
           note?: string | null;
+          to_account_id?: string | null;
           updated_at?: string;
         };
         Update: {
           account_id?: string;
           amount_yen?: number;
-          category_id?: string;
+          category_id?: string | null;
           created_at?: string;
           entry_date?: string;
           foreign_amount_idr?: number | null;
           household_id?: string;
           id?: string;
-          kind?: "expense" | "income";
+          kind?: "expense" | "income" | "transfer";
           member_id?: string;
           note?: string | null;
+          to_account_id?: string | null;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      goal_contributions: {
+        Row: {
+          amount_yen: number;
+          contribution_date: string;
+          created_at: string;
+          goal_id: string;
+          household_id: string;
+          id: string;
+          member_id: string;
+          note: string | null;
+        };
+        Insert: {
+          amount_yen: number;
+          contribution_date: string;
+          created_at?: string;
+          goal_id: string;
+          household_id: string;
+          id?: string;
+          member_id: string;
+          note?: string | null;
+        };
+        Update: {
+          amount_yen?: number;
+          contribution_date?: string;
+          created_at?: string;
+          goal_id?: string;
+          household_id?: string;
+          id?: string;
+          member_id?: string;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
+      goals: {
+        Row: {
+          created_at: string;
+          emoji: string | null;
+          household_id: string;
+          id: string;
+          linked_account_id: string | null;
+          name: string;
+          target_amount_yen: number;
+          target_date: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          emoji?: string | null;
+          household_id: string;
+          id?: string;
+          linked_account_id?: string | null;
+          name: string;
+          target_amount_yen: number;
+          target_date?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          emoji?: string | null;
+          household_id?: string;
+          id?: string;
+          linked_account_id?: string | null;
+          name?: string;
+          target_amount_yen?: number;
+          target_date?: string | null;
         };
         Relationships: [];
       };

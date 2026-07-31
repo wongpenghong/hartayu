@@ -3,7 +3,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { EntryFilters } from "@/components/EntryFilters";
 import { EntryList } from "@/components/EntryList";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
-import { categoryNameById } from "@/household/category-utils";
+import { categoryEmojiById, categoryNameById } from "@/household/category-utils";
 import { fetchEntries } from "@/household/entries";
 import { fetchHouseholdMembers } from "@/household/members";
 import { fetchPockets } from "@/household/pockets";
@@ -64,6 +64,10 @@ export default function EntriesPage() {
     () => categoryNameById(categories),
     [categories],
   );
+  const categoryEmojisById = useMemo(
+    () => categoryEmojiById(categories),
+    [categories],
+  );
   const pocketsById = useMemo(() => pocketNameById(pockets), [pockets]);
   const filteredEntries = useMemo(
     () => filterEntries(entries, filter),
@@ -101,6 +105,7 @@ export default function EntriesPage() {
               entries={filteredEntries}
               members={members}
               categoryNameById={categoriesById}
+              categoryEmojiById={categoryEmojisById}
               pocketNameById={pocketsById}
               currentUserId={user?.id}
               groupByDay

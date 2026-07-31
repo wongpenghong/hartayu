@@ -35,6 +35,7 @@ function entry(
     Partial<Entry>,
 ): Entry {
   return {
+    toPocketId: null,
     categoryId: "cat-a",
     memberId: "member-a",
     foreignAmountIdr: null,
@@ -533,5 +534,36 @@ describe("ledger", () => {
         remainingYen: 15_000,
       },
     ]);
+  });
+
+  it("shifts pocket balances for transfers without changing household net", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        toPocketId: "pocket-b",
+        categoryId: null,
+        kind: "transfer",
+        amountYen: 50_000,
+        entryDate: "2026-07-10",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "income",
+        amountYen: 100_000,
+        entryDate: "2026-07-01",
+      }),
+    ];
+
+    expect(balanceForPocket(entries, "pocket-a")).toBe(50_000);
+    expect(balanceForPocket(entries, "pocket-b")).toBe(50_000);
+    expect(householdBalance(entries, pockets)).toBe(100_000);
+    expect(monthlyTotals(entries, 2026, 7)).toEqual({
+      incomeYen: 100_000,
+      expenseYen: 0,
+      netYen: 100_000,
+    });
+    expect(expenseTotalsByCategory(entries, 2026, 7)).toEqual([]);
   });
 });

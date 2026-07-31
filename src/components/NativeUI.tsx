@@ -222,11 +222,13 @@ export function TextField({
 
 export function CategoryChip({
   label,
+  emoji,
   selected,
   onClick,
   disabled,
 }: {
   label: string;
+  emoji?: string | null;
   selected?: boolean;
   onClick?: () => void;
   disabled?: boolean;
@@ -242,6 +244,7 @@ export function CategoryChip({
           : "bg-[#f2f2f7] text-neutral-900 active:bg-[#e5e5ea] dark:bg-neutral-800 dark:text-neutral-100 dark:active:bg-neutral-700"
       }`}
     >
+      {emoji ? `${emoji} ` : ""}
       {label}
     </button>
   );
@@ -433,6 +436,14 @@ export function ErrorNote({ message }: { message: string }) {
   );
 }
 
+export function WarningNote({ message }: { message: string }) {
+  return (
+    <p className="rounded-xl bg-[#fff3e0] px-3 py-2 text-[14px] font-medium text-[#e65100] dark:bg-[#3b2a12] dark:text-[#ffb74d]">
+      {message}
+    </p>
+  );
+}
+
 export function EmptyState({ message }: { message: string }) {
   return (
     <p className="px-4 py-8 text-center text-[15px] text-neutral-500 dark:text-neutral-400">
@@ -441,7 +452,78 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
-export function PocketIcon({ name }: { name: string }) {
+const EMOJI_PRESETS = [
+  "🍜",
+  "🚗",
+  "🏠",
+  "💊",
+  "🎬",
+  "🛍️",
+  "💰",
+  "🎁",
+  "🏦",
+  "💳",
+  "🏖️",
+  "🎯",
+  "✈️",
+  "📱",
+  "☕",
+  "🐾",
+] as const;
+
+export function EmojiField({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {EMOJI_PRESETS.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(value === emoji ? "" : emoji)}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl text-[20px] transition disabled:opacity-50 ${
+              value === emoji
+                ? "bg-[#007aff]/15 ring-2 ring-[#007aff]"
+                : "bg-[#f2f2f7] active:bg-[#e5e5ea] dark:bg-neutral-800 dark:active:bg-neutral-700"
+            }`}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+      <TextField
+        value={value}
+        onChange={onChange}
+        placeholder="Or type an emoji"
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+export function PocketIcon({
+  name,
+  emoji,
+}: {
+  name: string;
+  emoji?: string | null;
+}) {
+  if (emoji) {
+    return (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f2f2f7] text-[18px] dark:bg-neutral-800">
+        {emoji}
+      </span>
+    );
+  }
+
   const initial = name.trim().charAt(0).toUpperCase() || "P";
   return (
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#007aff]/10 text-[15px] font-semibold text-[#007aff]">
@@ -450,7 +532,21 @@ export function PocketIcon({ name }: { name: string }) {
   );
 }
 
-export function CategoryIcon({ kind }: { kind: "expense" | "income" }) {
+export function CategoryIcon({
+  kind,
+  emoji,
+}: {
+  kind: "expense" | "income";
+  emoji?: string | null;
+}) {
+  if (emoji) {
+    return (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f2f2f7] text-[18px] dark:bg-neutral-800">
+        {emoji}
+      </span>
+    );
+  }
+
   return (
     <span
       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[15px] ${
@@ -460,6 +556,37 @@ export function CategoryIcon({ kind }: { kind: "expense" | "income" }) {
       }`}
     >
       {kind === "expense" ? "↓" : "↑"}
+    </span>
+  );
+}
+
+export function TransferIcon() {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#007aff]/12 text-[15px] text-[#007aff]">
+      ⇄
+    </span>
+  );
+}
+
+export function GoalIcon({
+  name,
+  emoji,
+}: {
+  name: string;
+  emoji?: string | null;
+}) {
+  if (emoji) {
+    return (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5856d6]/12 text-[18px]">
+        {emoji}
+      </span>
+    );
+  }
+
+  const initial = name.trim().charAt(0).toUpperCase() || "G";
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5856d6]/12 text-[15px] font-semibold text-[#5856d6]">
+      {initial}
     </span>
   );
 }

@@ -18,10 +18,29 @@ function entryDelta(entry: Entry): number {
   return entry.kind === "income" ? entry.amountYen : -entry.amountYen;
 }
 
+export function pocketDeltaForEntry(entry: Entry, pocketId: string): number {
+  if (entry.kind === "transfer") {
+    if (entry.pocketId === pocketId) {
+      return -entry.amountYen;
+    }
+    if (entry.toPocketId === pocketId) {
+      return entry.amountYen;
+    }
+    return 0;
+  }
+
+  if (entry.pocketId !== pocketId) {
+    return 0;
+  }
+
+  return entryDelta(entry);
+}
+
 export function balanceForPocket(entries: Entry[], pocketId: string): number {
-  return entries
-    .filter((entry) => entry.pocketId === pocketId)
-    .reduce((total, entry) => total + entryDelta(entry), 0);
+  return entries.reduce(
+    (total, entry) => total + pocketDeltaForEntry(entry, pocketId),
+    0,
+  );
 }
 
 export function balancesByPocket(
@@ -57,7 +76,10 @@ export function monthlyTotals(
   year: number,
   month: number,
 ): MonthlyTotals {
-  const inMonth = entries.filter((entry) => entryInMonth(entry, year, month));
+  const inMonth = entries.filter(
+    (entry) =>
+      entry.kind !== "transfer" && entryInMonth(entry, year, month),
+  );
 
   const incomeYen = inMonth
     .filter((entry) => entry.kind === "income")
@@ -79,7 +101,10 @@ export function filterEntries(entries: Entry[], filter: EntryFilter): Entry[] {
     if (filter.pocketId && entry.pocketId !== filter.pocketId) {
       return false;
     }
-    if (filter.categoryId && entry.categoryId !== filter.categoryId) {
+    if (
+      filter.categoryId &&
+      (entry.categoryId == null || entry.categoryId !== filter.categoryId)
+    ) {
       return false;
     }
     if (filter.year != null && filter.month != null) {
@@ -97,7 +122,11 @@ export function monthlyTotalsByCategory(
   const totals = new Map<string, CategoryMonthlyTotal>();
 
   for (const entry of entries) {
-    if (!entryInMonth(entry, year, month)) {
+    if (entry.kind === "transfer" || !entryInMonth(entry, year, month)) {
+      continue;
+    }
+
+    if (entry.categoryId == null) {
       continue;
     }
 
@@ -310,14 +339,18 @@ export function recentEntries(entries: Entry[], limit: number): Entry[] {
 
 export function recentCategoryIds(
   entries: Entry[],
-  kind: EntryKind,
+  kind: Exclude<EntryKind, "transfer">,
   limit = 5,
 ): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
 
   for (const entry of sortEntriesNewestFirst(entries)) {
-    if (entry.kind !== kind || seen.has(entry.categoryId)) {
+    if (
+      entry.kind !== kind ||
+      entry.categoryId == null ||
+      seen.has(entry.categoryId)
+    ) {
       continue;
     }
 
