@@ -17,14 +17,14 @@ export function RemainingBudgetSummary({
 
   return (
     <Link
-      to="/limits"
+      to="/budget"
       className="block rounded-3xl bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] active:opacity-80 dark:bg-neutral-900 dark:shadow-none"
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[13px] font-medium uppercase tracking-wide text-neutral-500">
           Budget left
         </p>
-        <span className="text-[15px] font-medium text-[#007aff]">Limits</span>
+        <span className="text-[15px] font-medium text-[#007aff]">Budget</span>
       </div>
       <ul className="mt-3 space-y-2">
         {rows.map((row) => (

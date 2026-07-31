@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatRemainingBudget } from "@/household/entry-display";
 import {
   fetchCategories,
   updateCategoryLimit,
@@ -17,7 +18,8 @@ import {
   SheetOverlay,
   YenAmountField,
 } from "@/components/NativeUI";
-import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useRefreshOnFocus, type RefreshOptions } from "@/hooks/useRefreshOnFocus";
+import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
 import { budgetPace, expenseTotalsByCategory } from "@/ledger/ledger";
 import {
   currentMonthInTokyo,
@@ -27,25 +29,33 @@ import {
   todayInTokyo,
 } from "@/lib/format-yen";
 
-type LimitRow = {
+type BudgetRow = {
   category: Category;
   spentYen: number;
 };
 
-export default function LimitsPage() {
+const BUDGET_PAGE_CACHE = "budget-page";
+
+type BudgetPageCache = {
+  entries: Awaited<ReturnType<typeof fetchEntries>>;
+  categories: Category[];
+};
+
+export default function BudgetPage() {
   const { registerEntryChangeListener } = useEntrySheet();
-  const [entries, setEntries] = useState<Awaited<ReturnType<typeof fetchEntries>>>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getPageCache<BudgetPageCache>(BUDGET_PAGE_CACHE);
+  const [entries, setEntries] = useState(cached?.entries ?? []);
+  const [categories, setCategories] = useState<Category[]>(cached?.categories ?? []);
+  const [loading, setLoading] = useState(!hasPageCache(BUDGET_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Category | null>(null);
-  const [limitInput, setLimitInput] = useState("");
+  const [budgetInput, setBudgetInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const month = useMemo(() => currentMonthInTokyo(), []);
 
-  const rows = useMemo((): LimitRow[] => {
+  const rows = useMemo((): BudgetRow[] => {
     const spentByCategory = new Map(
       expenseTotalsByCategory(entries, month.year, month.month).map((row) => [
         row.id,
@@ -79,8 +89,10 @@ export default function LimitsPage() {
     return budgetPace(spentYen, limitYen, month.year, month.month, today);
   }, [month.month, month.year, rows, today]);
 
-  const loadLimits = useCallback(async () => {
-    setLoading(true);
+  const loadBudget = useCallback(async (options?: RefreshOptions) => {
+    if (!options?.background) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [nextEntries, nextCategories] = await Promise.all([
@@ -89,9 +101,13 @@ export default function LimitsPage() {
       ]);
       setEntries(nextEntries);
       setCategories(nextCategories);
+      setPageCache(BUDGET_PAGE_CACHE, {
+        entries: nextEntries,
+        categories: nextCategories,
+      });
     } catch (caught) {
       setLoadError(
-        caught instanceof Error ? caught.message : "Failed to load limits",
+        caught instanceof Error ? caught.message : "Failed to load budget",
       );
     } finally {
       setLoading(false);
@@ -99,19 +115,19 @@ export default function LimitsPage() {
   }, []);
 
   useEffect(() => {
-    void loadLimits();
-  }, [loadLimits]);
+    void loadBudget({ background: hasPageCache(BUDGET_PAGE_CACHE) });
+  }, [loadBudget]);
 
-  useEffect(() => registerEntryChangeListener(loadLimits), [
-    loadLimits,
-    registerEntryChangeListener,
-  ]);
+  useEffect(
+    () => registerEntryChangeListener(() => void loadBudget({ background: true })),
+    [loadBudget, registerEntryChangeListener],
+  );
 
-  useRefreshOnFocus(loadLimits);
+  useRefreshOnFocus(loadBudget);
 
   function openEditor(category: Category) {
     setEditing(category);
-    setLimitInput(
+    setBudgetInput(
       category.monthly_limit_yen != null
         ? formatYenDigits(category.monthly_limit_yen)
         : "",
@@ -129,8 +145,8 @@ export default function LimitsPage() {
       return;
     }
 
-    const parsed = limitInput.trim() ? parseYenInput(limitInput) : null;
-    if (limitInput.trim() && parsed == null) {
+    const parsed = budgetInput.trim() ? parseYenInput(budgetInput) : null;
+    if (budgetInput.trim() && parsed == null) {
       setSaveError("Enter a valid yen amount.");
       return;
     }
@@ -145,7 +161,7 @@ export default function LimitsPage() {
       closeEditor();
     } catch (caught) {
       setSaveError(
-        caught instanceof Error ? caught.message : "Failed to save limit",
+        caught instanceof Error ? caught.message : "Failed to save budget",
       );
     } finally {
       setBusy(false);
@@ -161,7 +177,7 @@ export default function LimitsPage() {
       <header className="px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <PageBackLink to="/more" label="More" />
         <h1 className="text-[34px] font-bold leading-tight tracking-tight">
-          Payment limits
+          Budget
         </h1>
         <p className="mt-1 text-[15px] text-neutral-500">{month.label}</p>
       </header>
@@ -181,18 +197,19 @@ export default function LimitsPage() {
           </GroupCard>
         ) : null}
 
-        <GroupCard title="Active limits">
+        <GroupCard title="This month">
           {loading ? (
-            <EmptyState message="Loading limits…" />
+            <EmptyState message="Loading budget…" />
           ) : rows.length === 0 ? (
-            <EmptyState message="No limits set yet. Add one below." />
+            <EmptyState message="No budgets set yet. Add one below." />
           ) : (
             rows.map(({ category, spentYen }) => {
-              const limitYen = category.monthly_limit_yen ?? 0;
-              const over = spentYen > limitYen;
+              const budgetYen = category.monthly_limit_yen ?? 0;
+              const remainingYen = budgetYen - spentYen;
+              const over = remainingYen < 0;
               const pace = budgetPace(
                 spentYen,
-                limitYen,
+                budgetYen,
                 month.year,
                 month.month,
                 today,
@@ -212,11 +229,11 @@ export default function LimitsPage() {
                         over ? "text-[#ff3b30]" : "text-neutral-700 dark:text-neutral-300"
                       }`}
                     >
-                      {formatYen(spentYen)}/{formatYen(limitYen)}
+                      {formatYen(spentYen)} spent · {formatRemainingBudget(remainingYen)}
                     </span>
                   </div>
                   <div className="mt-3">
-                    <LimitProgressBar spentYen={spentYen} limitYen={limitYen} />
+                    <LimitProgressBar spentYen={spentYen} limitYen={budgetYen} />
                   </div>
                   <p className="mt-2 text-[13px] text-neutral-500">
                     {pace.daysLeft} days left · projecting{" "}
@@ -230,7 +247,7 @@ export default function LimitsPage() {
         </GroupCard>
 
         {unsetCategories.length > 0 ? (
-          <GroupCard title="Add limit">
+          <GroupCard title="Add budget">
             {unsetCategories.map((category) => (
               <button
                 key={category.id}
@@ -239,7 +256,7 @@ export default function LimitsPage() {
                 className="flex w-full items-center justify-between border-b border-[#ececee] px-4 py-3.5 text-left last:border-b-0 active:bg-neutral-50 dark:border-neutral-800 dark:active:bg-neutral-800"
               >
                 <span className="text-[17px] font-medium">{category.name}</span>
-                <span className="text-[15px] font-medium text-[#007aff]">Set limit</span>
+                <span className="text-[15px] font-medium text-[#007aff]">Set budget</span>
               </button>
             ))}
           </GroupCard>
@@ -249,13 +266,13 @@ export default function LimitsPage() {
       <SheetOverlay
         open={editing != null}
         onClose={closeEditor}
-        title={editing ? `${editing.name} limit` : "Limit"}
+        title={editing ? `${editing.name} budget` : "Budget"}
       >
-        <Field label="Monthly limit (yen)">
-          <YenAmountField value={limitInput} onChange={setLimitInput} />
+        <Field label="Monthly budget (yen)">
+          <YenAmountField value={budgetInput} onChange={setBudgetInput} />
         </Field>
         <p className="text-[14px] text-neutral-500">
-          Leave blank to remove the limit.
+          Leave blank to remove the budget.
         </p>
         {saveError ? <ErrorNote message={saveError} /> : null}
         <PrimaryAction disabled={busy} onClick={() => void handleSave()}>

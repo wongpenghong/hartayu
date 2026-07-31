@@ -27,7 +27,7 @@ export function validateCategoryLimit(limitYen: number | null): string | null {
     return null;
   }
   if (!Number.isSafeInteger(limitYen) || limitYen <= 0) {
-    return "Limit must be a positive whole yen amount.";
+    return "Budget must be a positive whole yen amount.";
   }
   return null;
 }
@@ -162,7 +162,7 @@ export async function updateCategoryLimit(
     .single();
 
   if (error || !data) {
-    throw error ?? new Error("Failed to update category limit");
+    throw error ?? new Error("Failed to update category budget");
   }
 
   return data;

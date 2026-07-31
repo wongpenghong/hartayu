@@ -9,7 +9,7 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
   const moreActive =
     location.pathname === "/more" ||
     location.pathname === "/analysis" ||
-    location.pathname === "/limits" ||
+    location.pathname === "/budget" ||
     location.pathname === "/portfolio";
 
   return (

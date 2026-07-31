@@ -16,8 +16,8 @@ const hubs = [
     ),
   },
   {
-    label: "Limits",
-    path: "/limits",
+    label: "Budget",
+    path: "/budget",
     iconClass: "bg-[#ff9500]",
     icon: (
       <>

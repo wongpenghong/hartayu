@@ -28,7 +28,7 @@ describe("validateCategoryLimit", () => {
     expect(validateCategoryLimit(50_000)).toBeNull();
   });
 
-  it("rejects non-positive limits", () => {
-    expect(validateCategoryLimit(0)).toBe("Limit must be a positive whole yen amount.");
+  it("rejects non-positive budgets", () => {
+    expect(validateCategoryLimit(0)).toBe("Budget must be a positive whole yen amount.");
   });
 });
