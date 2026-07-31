@@ -1,8 +1,8 @@
+import { Link } from "react-router-dom";
 import type { Pocket } from "@/household/pockets";
 import { netTone } from "@/household/entry-display";
 import type { PocketBalance } from "@/ledger/types";
 import { formatYen } from "@/lib/format-yen";
-import { EmptyState, GroupCard, PocketIcon } from "@/components/NativeUI";
 
 export function PocketsSummary({
   pockets,
@@ -14,52 +14,35 @@ export function PocketsSummary({
   loading?: boolean;
 }) {
   const balanceById = new Map(balances.map((row) => [row.pocketId, row.balanceYen]));
-  const rows = [...pockets].sort((left, right) => {
-    const balanceDelta =
-      (balanceById.get(right.id) ?? 0) - (balanceById.get(left.id) ?? 0);
-    if (balanceDelta !== 0) {
-      return balanceDelta;
-    }
-    return left.name.localeCompare(right.name);
-  });
+  const totalBalanceYen = pockets.reduce(
+    (total, pocket) => total + (balanceById.get(pocket.id) ?? 0),
+    0,
+  );
 
-  if (loading) {
-    return (
-      <GroupCard title="Pockets">
-        <EmptyState message="Loading pockets…" />
-      </GroupCard>
-    );
+  if (loading || pockets.length === 0) {
+    return null;
   }
 
-  if (rows.length === 0) {
-    return (
-      <GroupCard title="Pockets">
-        <EmptyState message="Add a pocket in Settings." />
-      </GroupCard>
-    );
-  }
+  const pocketLabel =
+    pockets.length === 1 ? "1 pocket" : `${pockets.length} pockets`;
 
   return (
-    <GroupCard title="Pockets">
-      {rows.map((pocket) => {
-        const balanceYen = balanceById.get(pocket.id) ?? 0;
-        return (
-          <div
-            key={pocket.id}
-            className="flex items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0 dark:border-neutral-800"
-          >
-            <PocketIcon name={pocket.name} emoji={pocket.emoji} />
-            <span className="min-w-0 flex-1 truncate text-[17px] font-medium">
-              {pocket.name}
-            </span>
-            <span
-              className={`text-[17px] font-semibold tabular-nums ${netTone(balanceYen)}`}
-            >
-              {formatYen(balanceYen)}
-            </span>
-          </div>
-        );
-      })}
-    </GroupCard>
+    <Link
+      to="/settings?tab=pockets"
+      className="block rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] active:opacity-80 dark:bg-neutral-900 dark:shadow-none"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[13px] font-medium uppercase tracking-wide text-neutral-500">
+          Pockets
+        </p>
+        <span className="text-[20px] text-neutral-300">›</span>
+      </div>
+      <p
+        className={`mt-2 text-[32px] font-bold tracking-tight tabular-nums ${netTone(totalBalanceYen)}`}
+      >
+        {formatYen(totalBalanceYen)}
+      </p>
+      <p className="mt-1 text-[14px] text-neutral-500">{pocketLabel} · Manage in Settings</p>
+    </Link>
   );
 }
