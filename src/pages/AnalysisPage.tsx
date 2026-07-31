@@ -11,7 +11,8 @@ import { pocketNameById } from "@/household/pocket-utils";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
 import { DonutChart, type DonutSegment } from "@/components/DonutChart";
 import { EmptyState, ErrorNote, PageBackLink, PillTabs } from "@/components/NativeUI";
-import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useRefreshOnFocus, type RefreshOptions } from "@/hooks/useRefreshOnFocus";
+import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
 import {
   expenseTotalsByCategory,
   expenseTotalsByMember,
@@ -27,19 +28,25 @@ import { currentMonthInTokyo, formatMonthLabel } from "@/lib/format-yen";
 
 type BreakdownDimension = "category" | "pocket" | "user" | "month";
 
+const ANALYSIS_PAGE_CACHE = "analysis-page";
+
+type AnalysisPageCache = {
+  entries: Awaited<ReturnType<typeof fetchEntries>>;
+  categories: Awaited<ReturnType<typeof fetchCategories>>;
+  pockets: Awaited<ReturnType<typeof fetchPockets>>;
+  members: Awaited<ReturnType<typeof fetchHouseholdMembers>>;
+};
+
 export default function AnalysisPage() {
   const { registerEntryChangeListener } = useEntrySheet();
-  const [entries, setEntries] = useState<Awaited<ReturnType<typeof fetchEntries>>>([]);
-  const [categories, setCategories] = useState<
-    Awaited<ReturnType<typeof fetchCategories>>
-  >([]);
-  const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
-  const [members, setMembers] = useState<
-    Awaited<ReturnType<typeof fetchHouseholdMembers>>
-  >([]);
+  const cached = getPageCache<AnalysisPageCache>(ANALYSIS_PAGE_CACHE);
+  const [entries, setEntries] = useState(cached?.entries ?? []);
+  const [categories, setCategories] = useState(cached?.categories ?? []);
+  const [pockets, setPockets] = useState(cached?.pockets ?? []);
+  const [members, setMembers] = useState(cached?.members ?? []);
   const [kindFilter, setKindFilter] = useState<EntryKind>("expense");
   const [dimension, setDimension] = useState<BreakdownDimension>("category");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasPageCache(ANALYSIS_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const month = useMemo(() => currentMonthInTokyo(), []);
@@ -116,8 +123,10 @@ export default function AnalysisPage() {
     pocketsById,
   ]);
 
-  const loadSummary = useCallback(async () => {
-    setLoading(true);
+  const loadSummary = useCallback(async (options?: RefreshOptions) => {
+    if (!options?.background) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [nextEntries, nextCategories, nextPockets, nextMembers] =
@@ -131,6 +140,12 @@ export default function AnalysisPage() {
       setCategories(nextCategories);
       setPockets(nextPockets);
       setMembers(nextMembers);
+      setPageCache(ANALYSIS_PAGE_CACHE, {
+        entries: nextEntries,
+        categories: nextCategories,
+        pockets: nextPockets,
+        members: nextMembers,
+      });
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load analysis",
@@ -141,13 +156,13 @@ export default function AnalysisPage() {
   }, []);
 
   useEffect(() => {
-    void loadSummary();
+    void loadSummary({ background: hasPageCache(ANALYSIS_PAGE_CACHE) });
   }, [loadSummary]);
 
-  useEffect(() => registerEntryChangeListener(loadSummary), [
-    loadSummary,
-    registerEntryChangeListener,
-  ]);
+  useEffect(
+    () => registerEntryChangeListener(() => void loadSummary({ background: true })),
+    [loadSummary, registerEntryChangeListener],
+  );
 
   useRefreshOnFocus(loadSummary);
 

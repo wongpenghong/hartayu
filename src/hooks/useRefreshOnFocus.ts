@@ -1,10 +1,16 @@
 import { useEffect } from "react";
 
-export function useRefreshOnFocus(refresh: () => void | Promise<void>): void {
+export type RefreshOptions = {
+  background?: boolean;
+};
+
+export function useRefreshOnFocus(
+  refresh: (options?: RefreshOptions) => void | Promise<void>,
+): void {
   useEffect(() => {
     function handleVisibilityChange() {
       if (document.visibilityState === "visible") {
-        void refresh();
+        void refresh({ background: true });
       }
     }
 

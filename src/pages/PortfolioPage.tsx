@@ -15,6 +15,11 @@ import {
   saveHoldingDraft,
 } from "@/household/holding-draft";
 import {
+  clearBulkAddDraft,
+  loadBulkAddDraft,
+  saveBulkAddDraft,
+} from "@/household/holding-bulk-draft";
+import {
   COLLECTIBLES_CLASS_NAME,
   deleteCollectibleMarketLink,
   fetchCollectibleMarketLinks,
@@ -65,7 +70,8 @@ import {
   PageBackLink,
   PillTabs,
 } from "@/components/NativeUI";
-import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useRefreshOnFocus, type RefreshOptions } from "@/hooks/useRefreshOnFocus";
+import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
 import {
   allocationByAssetClassLatest,
   allocationByHoldingLatest,
@@ -89,16 +95,29 @@ type HoldingSheetMode =
   | { kind: "add" }
   | { kind: "edit"; holding: Holding };
 
+const PORTFOLIO_PAGE_CACHE = "portfolio-page";
+
+type PortfolioPageCache = {
+  assetClasses: AssetClass[];
+  holdings: Holding[];
+  marketLinks: CollectibleMarketLink[];
+  sessions: SnapshotSession[];
+  snapshots: HoldingSnapshot[];
+};
+
 export default function PortfolioPage() {
   const { household, username } = useAuth();
-  const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]);
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [marketLinks, setMarketLinks] = useState<CollectibleMarketLink[]>([]);
-  const [sessions, setSessions] = useState<SnapshotSession[]>([]);
-  const [snapshots, setSnapshots] = useState<HoldingSnapshot[]>([]);
+  const cached = getPageCache<PortfolioPageCache>(PORTFOLIO_PAGE_CACHE);
+  const [assetClasses, setAssetClasses] = useState<AssetClass[]>(cached?.assetClasses ?? []);
+  const [holdings, setHoldings] = useState<Holding[]>(cached?.holdings ?? []);
+  const [marketLinks, setMarketLinks] = useState<CollectibleMarketLink[]>(
+    cached?.marketLinks ?? [],
+  );
+  const [sessions, setSessions] = useState<SnapshotSession[]>(cached?.sessions ?? []);
+  const [snapshots, setSnapshots] = useState<HoldingSnapshot[]>(cached?.snapshots ?? []);
   const [classFilter, setClassFilter] = useState<string>("all");
   const [selection, setSelection] = useState<PortfolioSelection>({ kind: "none" });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasPageCache(PORTFOLIO_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [holdingSheet, setHoldingSheet] = useState<HoldingSheetMode>({ kind: "closed" });
   const [snapshotOpen, setSnapshotOpen] = useState(false);
@@ -127,6 +146,7 @@ export default function PortfolioPage() {
     conditionGrade: "",
   });
   const [draftRestored, setDraftRestored] = useState(false);
+  const [bulkDraftRestored, setBulkDraftRestored] = useState(false);
 
   const assetClassNames = useMemo(
     () => new Map(assetClasses.map((row) => [row.id, row.name])),
@@ -234,8 +254,10 @@ export default function PortfolioPage() {
     [bulkQueue, bulkRow],
   );
 
-  const loadPortfolio = useCallback(async () => {
-    setLoading(true);
+  const loadPortfolio = useCallback(async (options?: RefreshOptions) => {
+    if (!options?.background) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [nextClasses, nextHoldings, nextSessions, nextSnapshots, nextMarketLinks] =
@@ -251,6 +273,13 @@ export default function PortfolioPage() {
       setSessions(nextSessions);
       setSnapshots(nextSnapshots);
       setMarketLinks(nextMarketLinks);
+      setPageCache(PORTFOLIO_PAGE_CACHE, {
+        assetClasses: nextClasses,
+        holdings: nextHoldings,
+        marketLinks: nextMarketLinks,
+        sessions: nextSessions,
+        snapshots: nextSnapshots,
+      });
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load portfolio",
@@ -261,7 +290,7 @@ export default function PortfolioPage() {
   }, []);
 
   useEffect(() => {
-    void loadPortfolio();
+    void loadPortfolio({ background: hasPageCache(PORTFOLIO_PAGE_CACHE) });
   }, [loadPortfolio]);
 
   useEffect(() => {
@@ -305,6 +334,24 @@ export default function PortfolioPage() {
   }, [assetClasses.length, draftRestored, holdings, loading]);
 
   useEffect(() => {
+    if (bulkDraftRestored || loading || assetClasses.length === 0) {
+      return;
+    }
+
+    const draft = loadBulkAddDraft();
+    if (!draft) {
+      setBulkDraftRestored(true);
+      return;
+    }
+
+    setBulkQueue(draft.queue);
+    setBulkRow(draft.row);
+    setSheetError(null);
+    setBulkOpen(true);
+    setBulkDraftRestored(true);
+  }, [assetClasses.length, bulkDraftRestored, loading]);
+
+  useEffect(() => {
     if (holdingSheet.kind === "closed") {
       return;
     }
@@ -330,6 +377,14 @@ export default function PortfolioPage() {
     holdingSheet,
     snkrdunkProductId,
   ]);
+
+  useEffect(() => {
+    if (!bulkOpen) {
+      return;
+    }
+
+    saveBulkAddDraft({ queue: bulkQueue, row: bulkRow });
+  }, [bulkOpen, bulkQueue, bulkRow]);
 
   function closeHoldingSheet() {
     clearHoldingDraft();
@@ -364,6 +419,13 @@ export default function PortfolioPage() {
     setBulkRow(emptyBulkRow(sticky));
     setSheetError(null);
     setBulkOpen(true);
+  }
+
+  function closeBulkAdd() {
+    clearBulkAddDraft();
+    setBulkOpen(false);
+    setBulkQueue([]);
+    setSheetError(null);
   }
 
   function openEditHolding(holding: Holding) {
@@ -544,8 +606,7 @@ export default function PortfolioPage() {
         [...rows, ...result.holdings].sort((a, b) => a.name.localeCompare(b.name)),
       );
       setMarketLinks((rows) => [...rows, ...result.marketLinks]);
-      setBulkOpen(false);
-      setBulkQueue([]);
+      closeBulkAdd();
     } catch (caught) {
       setSheetError(caught instanceof Error ? caught.message : "Failed to save holdings");
     } finally {
@@ -562,7 +623,7 @@ export default function PortfolioPage() {
     setRefreshError(null);
     try {
       await refreshHouseholdMarketPrices(household.id);
-      await loadPortfolio();
+      await loadPortfolio({ background: true });
     } catch (caught) {
       setRefreshError(
         caught instanceof Error ? caught.message : "Failed to refresh market prices",
@@ -850,11 +911,7 @@ export default function PortfolioPage() {
         duplicateWarning={bulkDuplicateWarning}
         busy={busy}
         error={sheetError}
-        onClose={() => {
-          setBulkOpen(false);
-          setBulkQueue([]);
-          setSheetError(null);
-        }}
+        onClose={closeBulkAdd}
         onAssetClassIdChange={(value) =>
           setBulkRow((row) => ({ ...row, assetClassId: value }))
         }

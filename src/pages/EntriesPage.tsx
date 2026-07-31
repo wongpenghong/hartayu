@@ -11,23 +11,36 @@ import { fetchPockets } from "@/household/pockets";
 import { pocketNameById } from "@/household/pocket-utils";
 import { fetchCategories } from "@/household/categories";
 import { EmptyState, ErrorNote, GroupCard } from "@/components/NativeUI";
-import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useRefreshOnFocus, type RefreshOptions } from "@/hooks/useRefreshOnFocus";
+import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
 import { filterEntries } from "@/ledger/ledger";
 import type { EntryFilter } from "@/ledger/types";
+
+const ENTRIES_PAGE_CACHE = "entries-page";
+
+type EntriesPageCache = {
+  entries: Awaited<ReturnType<typeof fetchEntries>>;
+  members: Awaited<ReturnType<typeof fetchHouseholdMembers>>;
+  categories: Awaited<ReturnType<typeof fetchCategories>>;
+  pockets: Awaited<ReturnType<typeof fetchPockets>>;
+};
 
 export default function EntriesPage() {
   const { user } = useAuth();
   const { openEditEntry, registerEntryChangeListener } = useEntrySheet();
-  const [entries, setEntries] = useState<Awaited<ReturnType<typeof fetchEntries>>>([]);
-  const [members, setMembers] = useState<Awaited<ReturnType<typeof fetchHouseholdMembers>>>([]);
-  const [categories, setCategories] = useState<Awaited<ReturnType<typeof fetchCategories>>>([]);
-  const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
+  const cached = getPageCache<EntriesPageCache>(ENTRIES_PAGE_CACHE);
+  const [entries, setEntries] = useState(cached?.entries ?? []);
+  const [members, setMembers] = useState(cached?.members ?? []);
+  const [categories, setCategories] = useState(cached?.categories ?? []);
+  const [pockets, setPockets] = useState(cached?.pockets ?? []);
   const [filter, setFilter] = useState<EntryFilter>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasPageCache(ENTRIES_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadEntries = useCallback(async () => {
-    setLoading(true);
+  const loadEntries = useCallback(async (options?: RefreshOptions) => {
+    if (!options?.background) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [nextEntries, nextMembers, nextCategories, nextPockets] =
@@ -41,6 +54,12 @@ export default function EntriesPage() {
       setMembers(nextMembers);
       setCategories(nextCategories);
       setPockets(nextPockets);
+      setPageCache(ENTRIES_PAGE_CACHE, {
+        entries: nextEntries,
+        members: nextMembers,
+        categories: nextCategories,
+        pockets: nextPockets,
+      });
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load entries",
@@ -51,13 +70,13 @@ export default function EntriesPage() {
   }, []);
 
   useEffect(() => {
-    void loadEntries();
+    void loadEntries({ background: hasPageCache(ENTRIES_PAGE_CACHE) });
   }, [loadEntries]);
 
-  useEffect(() => registerEntryChangeListener(loadEntries), [
-    loadEntries,
-    registerEntryChangeListener,
-  ]);
+  useEffect(
+    () => registerEntryChangeListener(() => void loadEntries({ background: true })),
+    [loadEntries, registerEntryChangeListener],
+  );
 
   useRefreshOnFocus(loadEntries);
 

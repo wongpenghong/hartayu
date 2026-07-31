@@ -47,7 +47,8 @@ import {
 } from "@/ledger/ledger";
 import type { Bill } from "@/ledger/types";
 import { ErrorNote } from "@/components/NativeUI";
-import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
+import { useRefreshOnFocus, type RefreshOptions } from "@/hooks/useRefreshOnFocus";
+import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
 import {
   currentMonthInTokyo,
   currentWeekRangeInTokyo,
@@ -57,25 +58,40 @@ import {
   yesterdayInTokyo,
 } from "@/lib/format-yen";
 
+const HOME_PAGE_CACHE = "home-page";
+
+type HomePageCache = {
+  entries: Awaited<ReturnType<typeof fetchEntries>>;
+  categories: Awaited<ReturnType<typeof fetchCategories>>;
+  goals: Awaited<ReturnType<typeof fetchGoals>>;
+  contributions: Awaited<ReturnType<typeof fetchGoalContributions>>;
+  pockets: Awaited<ReturnType<typeof fetchPockets>>;
+  bills: Bill[];
+  holdings: Holding[];
+  snapshotSessions: SnapshotSession[];
+  holdingSnapshots: HoldingSnapshot[];
+};
+
 export default function HomePage() {
   const { username, household, user, authError, signOut } = useAuth();
   const { openAddEntryWithDraft, registerEntryChangeListener } = useEntrySheet();
-  const [entries, setEntries] = useState<Awaited<ReturnType<typeof fetchEntries>>>([]);
-  const [categories, setCategories] = useState<
-    Awaited<ReturnType<typeof fetchCategories>>
-  >([]);
-  const [goals, setGoals] = useState<Awaited<ReturnType<typeof fetchGoals>>>([]);
-  const [contributions, setContributions] = useState<
-    Awaited<ReturnType<typeof fetchGoalContributions>>
-  >([]);
-  const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [snapshotSessions, setSnapshotSessions] = useState<SnapshotSession[]>([]);
-  const [holdingSnapshots, setHoldingSnapshots] = useState<HoldingSnapshot[]>([]);
-  const [bills, setBills] = useState<Bill[]>([]);
+  const cached = getPageCache<HomePageCache>(HOME_PAGE_CACHE);
+  const [entries, setEntries] = useState(cached?.entries ?? []);
+  const [categories, setCategories] = useState(cached?.categories ?? []);
+  const [goals, setGoals] = useState(cached?.goals ?? []);
+  const [contributions, setContributions] = useState(cached?.contributions ?? []);
+  const [pockets, setPockets] = useState(cached?.pockets ?? []);
+  const [holdings, setHoldings] = useState<Holding[]>(cached?.holdings ?? []);
+  const [snapshotSessions, setSnapshotSessions] = useState<SnapshotSession[]>(
+    cached?.snapshotSessions ?? [],
+  );
+  const [holdingSnapshots, setHoldingSnapshots] = useState<HoldingSnapshot[]>(
+    cached?.holdingSnapshots ?? [],
+  );
+  const [bills, setBills] = useState<Bill[]>(cached?.bills ?? []);
   const [busyBillId, setBusyBillId] = useState<string | null>(null);
   const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>("daily");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasPageCache(HOME_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const month = useMemo(() => currentMonthInTokyo(), []);
@@ -138,8 +154,10 @@ export default function HomePage() {
     return { amountYen: current, trend: trendPercent(current, previous) };
   }, [entries, spendingPeriod]);
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
+  const loadDashboard = useCallback(async (options?: RefreshOptions) => {
+    if (!options?.background) {
+      setLoading(true);
+    }
     setLoadError(null);
     try {
       const [
@@ -172,6 +190,17 @@ export default function HomePage() {
       setHoldings(nextHoldings);
       setSnapshotSessions(nextSnapshotSessions);
       setHoldingSnapshots(nextHoldingSnapshots);
+      setPageCache(HOME_PAGE_CACHE, {
+        entries: nextEntries,
+        categories: nextCategories,
+        goals: nextGoals,
+        contributions: nextContributions,
+        pockets: nextPockets,
+        bills: nextBills,
+        holdings: nextHoldings,
+        snapshotSessions: nextSnapshotSessions,
+        holdingSnapshots: nextHoldingSnapshots,
+      });
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load dashboard",
@@ -182,13 +211,13 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    void loadDashboard();
+    void loadDashboard({ background: hasPageCache(HOME_PAGE_CACHE) });
   }, [loadDashboard]);
 
-  useEffect(() => registerEntryChangeListener(loadDashboard), [
-    loadDashboard,
-    registerEntryChangeListener,
-  ]);
+  useEffect(
+    () => registerEntryChangeListener(() => void loadDashboard({ background: true })),
+    [loadDashboard, registerEntryChangeListener],
+  );
 
   useRefreshOnFocus(loadDashboard);
 

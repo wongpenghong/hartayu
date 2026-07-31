@@ -17,8 +17,28 @@ A label that groups expenses or income for reporting (e.g. Food, Transport, Sala
 _Avoid_: Tag, bucket
 
 **Entry**:
-One logged expense or income row — the atomic thing you add in under ~10 seconds. Has amount, type, category, pocket, date, and an optional note.
+One logged expense, income, or transfer row — the atomic thing you add in under ~10 seconds. Expense and income have amount, type, category, pocket, date, and an optional note; transfer moves JPY between pockets without changing household net.
 _Avoid_: Transaction (overloaded with banking), record
+
+**Transfer**:
+An entry kind that moves JPY from one pocket to another. Does not change household net or category totals.
+_Avoid_: Payment, conversion
+
+**Budget**:
+The monthly spending cap for an expense category, in JPY. Shown in UI as "budget"; compared against expense entries in the current calendar month (JST).
+_Avoid_: Limit (old UI term), allocation (percent-of-income envelopes)
+
+**Budget group**:
+An optional display grouping for expense categories — Needs, Wants, or Savings. Groups budget rows on the Budget screen; caps remain fixed yen amounts, not percentages of income.
+_Avoid_: Envelope, bucket
+
+**Foreign amount**:
+Optional IDR value on an entry for purchases logged in rupiah. Household rollups and budgets use JPY only; foreign amount is what was actually paid in IDR.
+_Avoid_: Second ledger, converted total
+
+**Exchange rate**:
+A user-entered IDR→JPY rate on an entry, used to derive amount_yen from foreign amount. Per entry only; no fetched or household-default rate.
+_Avoid_: Live FX, API quote
 
 **Note**:
 Optional free-text on an entry describing what it was for (e.g. "Costco groceries"). Empty by default.
@@ -36,7 +56,7 @@ A person in the household who can log entries (you or your wife).
 _Avoid_: User (implementation term in auth)
 
 **Amount**:
-A monetary value always expressed in Japanese yen (JPY). v0 has no currency conversion.
+The canonical monetary value on an entry, always in Japanese yen (JPY). Drives net, budgets, analysis, and pocket balances. May be typed directly or derived from foreign amount × exchange rate.
 _Avoid_: Yen (use JPY in data; 円 is fine in UI copy)
 
 **Net**:
@@ -48,7 +68,7 @@ A label grouping portfolio holdings for allocation (e.g. Stocks, Collectibles, P
 _Avoid_: Category (cash-flow), pocket
 
 **Holding**:
-One tracked investment position — name, asset class, quantity (optional for total-value-only items), optional cost basis. Value comes from snapshots, not the cash-flow ledger. For collectibles, one holding per card identity (code + grade + market product); extra slabs of the same card use quantity, not separate rows.
+One tracked investment position — name, asset class, quantity (optional for total-value-only items), optional cost basis. Value comes from snapshots, not the cash-flow ledger. Portfolio never auto-posts to pockets; cash from a holding (e.g. monthly private-lending return) is logged separately as income to a pocket. For collectibles, one holding per card identity (code + grade + market product); extra slabs of the same card use quantity, not separate rows.
 _Avoid_: Entry, pocket, cert (as a separate holding)
 
 **Holding draft**:
