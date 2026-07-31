@@ -24,7 +24,6 @@ import {
   ErrorNote,
   Field,
   GroupCard,
-  IconButton,
   ListRow,
   MemberChip,
   PillTabs,
@@ -161,10 +160,11 @@ function PocketsPanel({
         title="Active"
         footer="Bank accounts, e-money, and cash. Archived pockets stay for entry history."
       >
+        <ListRow onClick={openAdd}>
+          <span className="text-[17px] font-medium text-[#007aff]">+ Add pocket</span>
+        </ListRow>
         {loading ? (
           <EmptyState message="Loading pockets…" />
-        ) : visibleActivePockets.length === 0 ? (
-          <EmptyState message="No pockets yet. Tap + to add one." />
         ) : (
           visibleActivePockets.map((pocket) => {
             const member = pocket.primary_member_id
@@ -270,10 +270,6 @@ function PocketsPanel({
           </p>
         )}
       </SheetOverlay>
-
-      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20">
-        <IconButton label="Add pocket" onClick={openAdd} />
-      </div>
     </>
   );
 }
@@ -378,24 +374,33 @@ function CategoriesPanel({
             : "Income starters stay fixed for stable reporting."
         }
       >
+        <ListRow onClick={openAdd}>
+          <span className="text-[17px] font-medium text-[#007aff]">+ Add category</span>
+        </ListRow>
         {loading ? (
           <EmptyState message="Loading categories…" />
         ) : visible.length === 0 ? (
           <EmptyState message="No categories in this group." />
         ) : (
-          visible.map((category) => (
-            <ListRow key={category.id} onClick={() => openEdit(category)}>
-              <CategoryIcon kind={category.kind} />
-              <span className="min-w-0 flex-1 truncate text-[17px] font-medium">
-                {category.name}
-              </span>
-              {category.is_starter ? (
+          visible.map((category) =>
+            category.is_starter ? (
+              <ListRow key={category.id}>
+                <CategoryIcon kind={category.kind} />
+                <span className="min-w-0 flex-1 truncate text-[17px] text-neutral-500">
+                  {category.name}
+                </span>
                 <MemberChip label="Starter" />
-              ) : (
+              </ListRow>
+            ) : (
+              <ListRow key={category.id} onClick={() => openEdit(category)}>
+                <CategoryIcon kind={category.kind} />
+                <span className="min-w-0 flex-1 truncate text-[17px] font-medium">
+                  {category.name}
+                </span>
                 <span className="text-[20px] text-neutral-300">›</span>
-              )}
-            </ListRow>
-          ))
+              </ListRow>
+            ),
+          )
         )}
       </GroupCard>
 
@@ -429,10 +434,6 @@ function CategoriesPanel({
           {busy ? "Saving…" : "Save"}
         </PrimaryAction>
       </SheetOverlay>
-
-      <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-20">
-        <IconButton label="Add category" onClick={openAdd} />
-      </div>
     </>
   );
 }

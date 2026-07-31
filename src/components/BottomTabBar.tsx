@@ -9,7 +9,7 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto flex max-w-md justify-center px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="pointer-events-auto grid w-full grid-cols-6 items-end rounded-[28px] bg-white px-1 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:bg-neutral-900 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
+      <div className="pointer-events-auto grid w-full grid-cols-5 items-end rounded-[28px] bg-white px-1 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:bg-neutral-900 dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
         <NavTab
           to="/"
           label="Home"
@@ -17,10 +17,10 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
           icon={<HomeIcon active={location.pathname === "/"} />}
         />
         <NavTab
-          to="/analysis"
-          label="Analysis"
-          active={location.pathname === "/analysis"}
-          icon={<AnalysisIcon active={location.pathname === "/analysis"} />}
+          to="/entries"
+          label="Transactions"
+          active={location.pathname === "/entries"}
+          icon={<TransactionsIcon active={location.pathname === "/entries"} />}
         />
         <div className="flex justify-center">
           <IconButton
@@ -31,16 +31,10 @@ export function BottomTabBar({ disabled }: { disabled?: boolean }) {
           />
         </div>
         <NavTab
-          to="/entries"
-          label="Transactions"
-          active={location.pathname === "/entries"}
-          icon={<TransactionsIcon active={location.pathname === "/entries"} />}
-        />
-        <NavTab
-          to="/limits"
-          label="Limits"
-          active={location.pathname === "/limits"}
-          icon={<LimitsIcon active={location.pathname === "/limits"} />}
+          to="/more"
+          label="More"
+          active={location.pathname === "/more"}
+          icon={<MoreIcon active={location.pathname === "/more"} />}
         />
         <NavTab
           to="/settings"
@@ -110,19 +104,6 @@ function HomeIcon({ active }: { active: boolean }) {
   );
 }
 
-function AnalysisIcon({ active }: { active: boolean }) {
-  return (
-    <TabIcon active={active}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M5 18V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M10 18V10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M15 18V13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M20 18V8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    </TabIcon>
-  );
-}
-
 function TransactionsIcon({ active }: { active: boolean }) {
   return (
     <TabIcon active={active}>
@@ -147,22 +128,13 @@ function TransactionsIcon({ active }: { active: boolean }) {
   );
 }
 
-function LimitsIcon({ active }: { active: boolean }) {
+function MoreIcon({ active }: { active: boolean }) {
   return (
     <TabIcon active={active}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M6 9h12v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M9 9V7a3 3 0 0 1 6 0v2"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
+        <circle cx="6" cy="12" r="1.5" fill="currentColor" />
+        <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+        <circle cx="18" cy="12" r="1.5" fill="currentColor" />
       </svg>
     </TabIcon>
   );

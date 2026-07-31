@@ -6,6 +6,7 @@ import AnalysisPage from "@/pages/AnalysisPage";
 import EntriesPage from "@/pages/EntriesPage";
 import HomePage from "@/pages/HomePage";
 import LimitsPage from "@/pages/LimitsPage";
+import MorePage from "@/pages/MorePage";
 import SettingsPage from "@/pages/SettingsPage";
 import SignInPage from "@/pages/SignInPage";
 
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/categories" element={<Navigate to="/analysis" replace />} />
             <Route path="/entries" element={<EntriesPage />} />
             <Route path="/limits" element={<LimitsPage />} />
+            <Route path="/more" element={<MorePage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
