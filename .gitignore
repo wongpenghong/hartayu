@@ -4,3 +4,14 @@ dist
 .env.local
 *.local
 .DS_Store
+
+# AI
+.cursor
+.docs
+docs
+CONTEXT.md
+CLAUDE.md
+
+# Temp logic
+scripts
+
