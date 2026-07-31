@@ -9,6 +9,11 @@ import {
   validateTransferDraft,
 } from "@/household/entry-form";
 import {
+  expensePocketBalanceWarning,
+  netTone,
+  pocketBalanceForEntryForm,
+} from "@/household/entry-display";
+import {
   createEntry,
   createTransfer,
   deleteEntry,
@@ -20,6 +25,7 @@ import { activePockets, defaultPocketId } from "@/household/pocket-utils";
 import type { Entry, EntryKind } from "@/ledger/types";
 import { recentCategoryIds } from "@/ledger/ledger";
 import {
+  formatYen,
   formatYenDigits,
   parseYenInput,
   todayInTokyo,
@@ -136,6 +142,39 @@ export function EntrySheet({
   }, [categories, entry, open, pockets, userId, visiblePockets]);
 
   const destinationPockets = visiblePockets.filter((pocket) => pocket.id !== pocketId);
+  const pocketBalanceById = useMemo(() => {
+    const balances = new Map<string, number>();
+    for (const pocket of visiblePockets) {
+      balances.set(
+        pocket.id,
+        pocketBalanceForEntryForm(entries, pocket.id, entry),
+      );
+    }
+    return balances;
+  }, [entries, entry, visiblePockets]);
+
+  const selectedPocketBalanceYen = pocketId
+    ? (pocketBalanceById.get(pocketId) ?? null)
+    : null;
+  const draftAmountYen = parseYenInput(amountInput);
+  const expenseBalanceWarning =
+    kind === "expense" && selectedPocketBalanceYen != null
+      ? expensePocketBalanceWarning(selectedPocketBalanceYen, draftAmountYen)
+      : null;
+
+  function pocketOptionLabel(pocket: Pocket): string {
+    const balanceYen = pocketBalanceById.get(pocket.id) ?? 0;
+    const prefix = pocket.emoji ? `${pocket.emoji} ` : "";
+    return `${prefix}${pocket.name} · ${formatYen(balanceYen)}`;
+  }
+
+  function PocketBalanceHint({ balanceYen }: { balanceYen: number }) {
+    return (
+      <p className={`mt-2 text-[13px] font-medium ${netTone(balanceYen)}`}>
+        Balance {formatYen(balanceYen)}
+      </p>
+    );
+  }
 
   function pickDestinationPocket(fromPocketId: string): string {
     return (
@@ -362,12 +401,14 @@ export function EntrySheet({
               ) : (
                 visiblePockets.map((pocket) => (
                   <option key={pocket.id} value={pocket.id}>
-                    {pocket.emoji ? `${pocket.emoji} ` : ""}
-                    {pocket.name}
+                    {pocketOptionLabel(pocket)}
                   </option>
                 ))
               )}
             </SelectField>
+            {selectedPocketBalanceYen != null ? (
+              <PocketBalanceHint balanceYen={selectedPocketBalanceYen} />
+            ) : null}
           </Field>
 
           <Field label="To pocket">
@@ -377,8 +418,7 @@ export function EntrySheet({
               ) : (
                 destinationPockets.map((pocket) => (
                   <option key={pocket.id} value={pocket.id}>
-                    {pocket.emoji ? `${pocket.emoji} ` : ""}
-                    {pocket.name}
+                    {pocketOptionLabel(pocket)}
                   </option>
                 ))
               )}
@@ -427,12 +467,19 @@ export function EntrySheet({
               ) : (
                 visiblePockets.map((pocket) => (
                   <option key={pocket.id} value={pocket.id}>
-                    {pocket.emoji ? `${pocket.emoji} ` : ""}
-                    {pocket.name}
+                    {pocketOptionLabel(pocket)}
                   </option>
                 ))
               )}
             </SelectField>
+            {selectedPocketBalanceYen != null ? (
+              <PocketBalanceHint balanceYen={selectedPocketBalanceYen} />
+            ) : null}
+            {expenseBalanceWarning ? (
+              <p className="mt-2 text-[13px] font-medium text-[#ff3b30]">
+                {expenseBalanceWarning}
+              </p>
+            ) : null}
           </Field>
         </>
       )}

@@ -7,13 +7,17 @@ import {
   SpendingTrendCard,
   type SpendingPeriod,
 } from "@/components/SpendingTrendCard";
+import { PocketsSummary } from "@/components/PocketsSummary";
 import { GoalsSummary } from "@/components/GoalsSummary";
 import { categoryNameById } from "@/household/category-utils";
 import { fetchCategories } from "@/household/categories";
 import { fetchEntries } from "@/household/entries";
 import { fetchGoalContributions, fetchGoals } from "@/household/goals";
+import { fetchPockets } from "@/household/pockets";
+import { activePockets, toLedgerPockets } from "@/household/pocket-utils";
 import { netTone } from "@/household/entry-display";
 import {
+  balancesByPocket,
   expenseTotalForDate,
   expenseTotalForDateRange,
   monthlyTotals,
@@ -42,6 +46,7 @@ export default function HomePage() {
   const [contributions, setContributions] = useState<
     Awaited<ReturnType<typeof fetchGoalContributions>>
   >([]);
+  const [pockets, setPockets] = useState<Awaited<ReturnType<typeof fetchPockets>>>([]);
   const [spendingPeriod, setSpendingPeriod] = useState<SpendingPeriod>("daily");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -58,6 +63,11 @@ export default function HomePage() {
   const budgetRows = useMemo(
     () => remainingBudgetByCategory(entries, categories, month.year, month.month, 5),
     [categories, entries, month.month, month.year],
+  );
+  const activePocketList = useMemo(() => activePockets(pockets), [pockets]);
+  const pocketBalances = useMemo(
+    () => balancesByPocket(entries, toLedgerPockets(pockets)),
+    [entries, pockets],
   );
 
   const spending = useMemo(() => {
@@ -88,17 +98,19 @@ export default function HomePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [nextEntries, nextCategories, nextGoals, nextContributions] =
+      const [nextEntries, nextCategories, nextGoals, nextContributions, nextPockets] =
         await Promise.all([
           fetchEntries(),
           fetchCategories(),
           fetchGoals(),
           fetchGoalContributions(),
+          fetchPockets(),
         ]);
       setEntries(nextEntries);
       setCategories(nextCategories);
       setGoals(nextGoals);
       setContributions(nextContributions);
+      setPockets(nextPockets);
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load dashboard",
@@ -180,6 +192,12 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        <PocketsSummary
+          pockets={activePocketList}
+          balances={pocketBalances}
+          loading={loading}
+        />
 
         <ExpenseBreakdownCard
           entries={entries}

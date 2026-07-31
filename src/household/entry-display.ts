@@ -1,4 +1,5 @@
 import type { Entry, EntryKind } from "@/ledger/types";
+import { balanceForPocket, pocketDeltaForEntry } from "@/ledger/ledger";
 import { formatIdr } from "@/lib/format-idr";
 import { addCalendarDays, formatYen } from "@/lib/format-yen";
 
@@ -86,4 +87,32 @@ export function formatRemainingBudget(remainingYen: number): string {
   }
 
   return `${formatYen(Math.abs(remainingYen))} over`;
+}
+
+export function pocketBalanceForEntryForm(
+  entries: readonly Entry[],
+  pocketId: string,
+  editingEntry: Entry | null,
+): number {
+  const balanceYen = balanceForPocket([...entries], pocketId);
+  if (!editingEntry) {
+    return balanceYen;
+  }
+
+  return balanceYen - pocketDeltaForEntry(editingEntry, pocketId);
+}
+
+export function expensePocketBalanceWarning(
+  balanceYen: number,
+  amountYen: number | null,
+): string | null {
+  if (balanceYen <= 0) {
+    return "This pocket is empty or overdrawn.";
+  }
+
+  if (amountYen != null && amountYen > balanceYen) {
+    return `This expense exceeds the pocket balance by ${formatYen(amountYen - balanceYen)}.`;
+  }
+
+  return null;
 }
