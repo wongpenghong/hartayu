@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Entry } from "@/ledger/types";
 import { canEditEntry, entryAttributionLabel } from "@/household/attribution";
 import type { HouseholdMember } from "@/household/members";
@@ -10,6 +11,7 @@ import {
   formatTransferLabel,
 } from "@/household/entry-display";
 import { groupEntriesByDay } from "@/ledger/ledger";
+import type { EntryDayGroup } from "@/ledger/types";
 import { todayInTokyo } from "@/lib/format-yen";
 import {
   CategoryIcon,
@@ -96,6 +98,67 @@ function EntryRow({
   );
 }
 
+function DayGroupSection({
+  group,
+  today,
+  members,
+  categoryNameById,
+  categoryEmojiById,
+  pocketNameById,
+  currentUserId,
+  onEditEntry,
+}: {
+  group: EntryDayGroup;
+  today: string;
+  members: HouseholdMember[];
+  categoryNameById: Map<string, string>;
+  categoryEmojiById: Map<string, string | null>;
+  pocketNameById: Map<string, string>;
+  currentUserId?: string;
+  onEditEntry?: (entry: Entry) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const entryCount = group.entries.length;
+
+  return (
+    <div>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((value) => !value)}
+        className="flex w-full items-center gap-2 border-b border-[#ececee] bg-[#f2f2f7] px-4 py-2 text-left active:bg-[#e8e8ed] dark:border-neutral-800 dark:bg-neutral-950 dark:active:bg-neutral-900"
+      >
+        <span className="min-w-0 flex-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400">
+          {formatDayGroupHeader(group.date, today)}
+        </span>
+        {!expanded ? (
+          <span className="text-[13px] tabular-nums text-neutral-400">
+            {entryCount} {entryCount === 1 ? "entry" : "entries"}
+          </span>
+        ) : null}
+        <span className="text-[11px] text-neutral-400">
+          {expanded ? "▴" : "▾"}
+        </span>
+      </button>
+      {expanded
+        ? group.entries.map((entry) => (
+            <EntryRow
+              key={entry.id}
+              entry={entry}
+              members={members}
+              categoryNameById={categoryNameById}
+              categoryEmojiById={categoryEmojiById}
+              pocketNameById={pocketNameById}
+              currentUserId={currentUserId}
+              onEditEntry={onEditEntry}
+              showDate={false}
+            />
+          ))
+        : null}
+    </div>
+  );
+}
+
 export function EntryList({
   entries,
   members,
@@ -121,24 +184,17 @@ export function EntryList({
     return (
       <>
         {groupEntriesByDay(entries).map((group) => (
-          <div key={group.date}>
-            <p className="border-b border-[#ececee] bg-[#f2f2f7] px-4 py-2 text-[13px] font-semibold text-neutral-500 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-400">
-              {formatDayGroupHeader(group.date, today)}
-            </p>
-            {group.entries.map((entry) => (
-              <EntryRow
-                key={entry.id}
-                entry={entry}
-                members={members}
-                categoryNameById={categoryNameById}
-                categoryEmojiById={categoryEmojiById}
-                pocketNameById={pocketNameById}
-                currentUserId={currentUserId}
-                onEditEntry={onEditEntry}
-                showDate={false}
-              />
-            ))}
-          </div>
+          <DayGroupSection
+            key={group.date}
+            group={group}
+            today={today}
+            members={members}
+            categoryNameById={categoryNameById}
+            categoryEmojiById={categoryEmojiById}
+            pocketNameById={pocketNameById}
+            currentUserId={currentUserId}
+            onEditEntry={onEditEntry}
+          />
         ))}
       </>
     );
