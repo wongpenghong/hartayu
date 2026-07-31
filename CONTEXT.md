@@ -48,8 +48,20 @@ A label grouping portfolio holdings for allocation (e.g. Stocks, Collectibles, P
 _Avoid_: Category (cash-flow), pocket
 
 **Holding**:
-One tracked investment position — name, asset class, quantity (optional for total-value-only items), optional cost basis. Value comes from snapshots, not the cash-flow ledger.
-_Avoid_: Entry, pocket
+One tracked investment position — name, asset class, quantity (optional for total-value-only items), optional cost basis. Value comes from snapshots, not the cash-flow ledger. For collectibles, one holding per card identity (code + grade + market product); extra slabs of the same card use quantity, not separate rows.
+_Avoid_: Entry, pocket, cert (as a separate holding)
+
+**Holding draft**:
+In-progress data for adding or editing a holding, persisted locally on the device so a form survives switching browser tabs. Expires after a short TTL if not submitted or cancelled.
+_Avoid_: Autosave, cache
+
+**Bulk add session**:
+A client-side queue of holdings staged before a single batch submit. Used when entering many collectibles at once; cost basis is usually filled later. Asset class and condition grade may carry forward between queued rows; name, code, and product ID reset each row.
+_Avoid_: Import, CSV upload
+
+**Portfolio selection**:
+A multi-select filter on portfolio views. Toggle holdings (or asset classes) via the allocation chart or holdings list; trend, P&L, allocation, and list all reflect the selected set. Empty selection means show all.
+_Avoid_: Filter tab, drill-down
 
 **Value snapshot**:
 A dated mark-to-market for holdings. Batch sessions: one as-of date, update all holdings; skipped lines carry forward last price. Supports unit price × quantity or total value shortcut. Collectibles may auto-fill from a **market quote**; other holdings stay manual.

@@ -435,6 +435,10 @@ export type Database = {
           username: string;
         }[];
       };
+      create_holdings_batch: {
+        Args: { p_payload: Json };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

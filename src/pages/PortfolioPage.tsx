@@ -4,11 +4,18 @@ import { canRefreshMarketPrices } from "@/auth/member-auth";
 import { fetchAssetClasses, type AssetClass } from "@/household/asset-classes";
 import {
   createHolding,
+  createHoldingsBatch,
   deleteHolding,
   fetchHoldings,
   updateHolding,
 } from "@/household/holdings";
 import {
+  clearHoldingDraft,
+  loadHoldingDraft,
+  saveHoldingDraft,
+} from "@/household/holding-draft";
+import {
+  COLLECTIBLES_CLASS_NAME,
   deleteCollectibleMarketLink,
   fetchCollectibleMarketLinks,
   hasMarketLinkInput,
@@ -21,6 +28,14 @@ import {
   type CollectibleMarketLink,
 } from "@/household/collectible-market-links";
 import {
+  emptyBulkRow,
+  findDuplicateInQueue,
+  queueItemFromForm,
+  validateBulkRow,
+  type BulkHoldingQueueItem,
+  type BulkRowForm,
+} from "@/household/holding-bulk-queue";
+import {
   createBatchSnapshotSession,
   fetchHoldingSnapshots,
   fetchSnapshotSessions,
@@ -29,6 +44,7 @@ import { breakdownColor } from "@/household/breakdown-colors";
 import { DonutChart } from "@/components/DonutChart";
 import { LineChart } from "@/components/LineChart";
 import {
+  PortfolioBulkAddSheet,
   PortfolioHoldingSheet,
   PortfolioSnapshotSheet,
   type SnapshotLineState,
@@ -90,6 +106,17 @@ export default function PortfolioPage() {
   const [snapshotLines, setSnapshotLines] = useState<Record<string, SnapshotLineState>>({});
   const [busy, setBusy] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkQueue, setBulkQueue] = useState<BulkHoldingQueueItem[]>([]);
+  const [bulkRow, setBulkRow] = useState<BulkRowForm>({
+    name: "",
+    assetClassId: "",
+    quantity: "",
+    collectibleCode: "",
+    snkrdunkProductId: "",
+    conditionGrade: "",
+  });
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const assetClassNames = useMemo(
     () => new Map(assetClasses.map((row) => [row.id, row.name])),
@@ -153,6 +180,16 @@ export default function PortfolioPage() {
     return holdingsNeedCostBasisHint(holdings, sessions, snapshots, filterId);
   }, [classFilter, holdings, sessions, snapshots]);
 
+  const collectiblesClassId = useMemo(
+    () => assetClasses.find((row) => row.name === COLLECTIBLES_CLASS_NAME)?.id ?? "",
+    [assetClasses],
+  );
+
+  const bulkDuplicateWarning = useMemo(
+    () => findDuplicateInQueue(bulkQueue, bulkRow),
+    [bulkQueue, bulkRow],
+  );
+
   const loadPortfolio = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -185,6 +222,73 @@ export default function PortfolioPage() {
 
   useRefreshOnFocus(loadPortfolio);
 
+  useEffect(() => {
+    if (draftRestored || loading || assetClasses.length === 0) {
+      return;
+    }
+
+    const draft = loadHoldingDraft();
+    if (!draft) {
+      setDraftRestored(true);
+      return;
+    }
+
+    setHoldingName(draft.name);
+    setHoldingClassId(draft.assetClassId);
+    setHoldingQuantity(draft.quantity);
+    setHoldingCostBasis(draft.costBasis);
+    setCollectibleCode(draft.collectibleCode);
+    setSnkrdunkProductId(draft.snkrdunkProductId);
+    setConditionGrade(draft.conditionGrade);
+    setSheetError(null);
+
+    if (draft.mode === "edit" && draft.holdingId) {
+      const holding = holdings.find((row) => row.id === draft.holdingId);
+      if (holding) {
+        setHoldingSheet({ kind: "edit", holding });
+      } else {
+        setHoldingSheet({ kind: "add" });
+      }
+    } else {
+      setHoldingSheet({ kind: "add" });
+    }
+
+    setDraftRestored(true);
+  }, [assetClasses.length, draftRestored, holdings, loading]);
+
+  useEffect(() => {
+    if (holdingSheet.kind === "closed") {
+      return;
+    }
+
+    saveHoldingDraft({
+      mode: holdingSheet.kind === "edit" ? "edit" : "add",
+      holdingId: holdingSheet.kind === "edit" ? holdingSheet.holding.id : undefined,
+      name: holdingName,
+      assetClassId: holdingClassId,
+      quantity: holdingQuantity,
+      costBasis: holdingCostBasis,
+      collectibleCode,
+      snkrdunkProductId,
+      conditionGrade,
+    });
+  }, [
+    collectibleCode,
+    conditionGrade,
+    holdingClassId,
+    holdingCostBasis,
+    holdingName,
+    holdingQuantity,
+    holdingSheet,
+    snkrdunkProductId,
+  ]);
+
+  function closeHoldingSheet() {
+    clearHoldingDraft();
+    setHoldingSheet({ kind: "closed" });
+    setSheetError(null);
+  }
+
   function resetMarketLinkFields(link?: CollectibleMarketLink) {
     setCollectibleCode(link?.collectibleCode ?? "");
     setSnkrdunkProductId(
@@ -201,6 +305,17 @@ export default function PortfolioPage() {
     resetMarketLinkFields();
     setSheetError(null);
     setHoldingSheet({ kind: "add" });
+  }
+
+  function openBulkAdd() {
+    const sticky = {
+      assetClassId: collectiblesClassId || assetClasses[0]?.id || "",
+      conditionGrade: "" as ConditionGrade | "",
+    };
+    setBulkQueue([]);
+    setBulkRow(emptyBulkRow(sticky));
+    setSheetError(null);
+    setBulkOpen(true);
   }
 
   function openEditHolding(holding: Holding) {
@@ -304,6 +419,7 @@ export default function PortfolioPage() {
       }
 
       setHoldingSheet({ kind: "closed" });
+      clearHoldingDraft();
     } catch (caught) {
       setSheetError(caught instanceof Error ? caught.message : "Failed to save holding");
     } finally {
@@ -329,8 +445,61 @@ export default function PortfolioPage() {
         rows.filter((row) => row.holdingId !== holdingSheet.holding.id),
       );
       setHoldingSheet({ kind: "closed" });
+      clearHoldingDraft();
     } catch (caught) {
       setSheetError(caught instanceof Error ? caught.message : "Failed to delete holding");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleBulkAddAnother() {
+    const error = validateBulkRow(bulkRow);
+    if (error) {
+      setSheetError(error);
+      return;
+    }
+    if (bulkDuplicateWarning) {
+      setSheetError("This code, grade, and product ID are already in the queue.");
+      return;
+    }
+
+    const item = queueItemFromForm(bulkRow);
+    if (!item) {
+      setSheetError("Complete all fields before adding to the queue.");
+      return;
+    }
+
+    setBulkQueue((rows) => [...rows, item]);
+    setBulkRow(
+      emptyBulkRow({
+        assetClassId: bulkRow.assetClassId,
+        conditionGrade: bulkRow.conditionGrade,
+      }),
+    );
+    setSheetError(null);
+  }
+
+  async function handleBulkSaveAll() {
+    if (!household || bulkQueue.length === 0) {
+      return;
+    }
+
+    setBusy(true);
+    setSheetError(null);
+    try {
+      const result = await createHoldingsBatch({
+        householdId: household.id,
+        rows: bulkQueue,
+      });
+      setHoldings((rows) =>
+        [...rows, ...result.holdings].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setMarketLinks((rows) => [...rows, ...result.marketLinks]);
+      setBulkOpen(false);
+      setBulkQueue([]);
+    } catch (caught) {
+      setSheetError(caught instanceof Error ? caught.message : "Failed to save holdings");
     } finally {
       setBusy(false);
     }
@@ -463,6 +632,13 @@ export default function PortfolioPage() {
           <ListRow onClick={openAddHolding}>
             <span className="text-[17px] font-medium text-[#007aff]">+ Add holding</span>
           </ListRow>
+          {collectiblesClassId ? (
+            <ListRow onClick={openBulkAdd}>
+              <span className="text-[17px] font-medium text-[#007aff]">
+                + Bulk add collectibles
+              </span>
+            </ListRow>
+          ) : null}
           {holdings.length > 0 ? (
             <ListRow onClick={openSnapshotSheet}>
               <span className="text-[17px] font-medium text-[#007aff]">Update values</span>
@@ -541,7 +717,7 @@ export default function PortfolioPage() {
         conditionGrade={conditionGrade}
         busy={busy}
         error={sheetError}
-        onClose={() => setHoldingSheet({ kind: "closed" })}
+        onClose={closeHoldingSheet}
         onNameChange={setHoldingName}
         onAssetClassIdChange={setHoldingClassId}
         onQuantityChange={setHoldingQuantity}
@@ -567,6 +743,43 @@ export default function PortfolioPage() {
           setSnapshotLines((rows) => ({ ...rows, [holdingId]: line }))
         }
         onSave={() => void handleSaveSnapshot()}
+      />
+
+      <PortfolioBulkAddSheet
+        open={bulkOpen}
+        assetClasses={assetClasses}
+        collectiblesClassId={collectiblesClassId}
+        assetClassId={bulkRow.assetClassId}
+        conditionGrade={bulkRow.conditionGrade}
+        name={bulkRow.name}
+        quantity={bulkRow.quantity}
+        collectibleCode={bulkRow.collectibleCode}
+        snkrdunkProductId={bulkRow.snkrdunkProductId}
+        queue={bulkQueue}
+        duplicateWarning={bulkDuplicateWarning}
+        busy={busy}
+        error={sheetError}
+        onClose={() => {
+          setBulkOpen(false);
+          setBulkQueue([]);
+          setSheetError(null);
+        }}
+        onAssetClassIdChange={(value) =>
+          setBulkRow((row) => ({ ...row, assetClassId: value }))
+        }
+        onConditionGradeChange={(value) =>
+          setBulkRow((row) => ({ ...row, conditionGrade: value }))
+        }
+        onNameChange={(value) => setBulkRow((row) => ({ ...row, name: value }))}
+        onQuantityChange={(value) => setBulkRow((row) => ({ ...row, quantity: value }))}
+        onCollectibleCodeChange={(value) =>
+          setBulkRow((row) => ({ ...row, collectibleCode: value }))
+        }
+        onSnkrdunkProductIdChange={(value) =>
+          setBulkRow((row) => ({ ...row, snkrdunkProductId: value }))
+        }
+        onAddAnother={handleBulkAddAnother}
+        onSaveAll={() => void handleBulkSaveAll()}
       />
     </>
   );

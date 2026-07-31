@@ -1,3 +1,6 @@
+import type { CollectibleMarketLink } from "@/household/collectible-market-links";
+import type { BulkHoldingQueueItem } from "@/household/holding-bulk-queue";
+import type { ConditionGrade } from "@/market/snkrdunk";
 import { getSupabase } from "@/lib/supabase";
 import type { Holding } from "@/ledger/portfolio";
 
@@ -174,4 +177,91 @@ export async function deleteHolding(holdingId: string): Promise<void> {
   if (error) {
     throw error;
   }
+}
+
+type BatchHoldingRow = {
+  id: string;
+  household_id: string;
+  asset_class_id: string;
+  name: string;
+  quantity: number | null;
+  cost_basis_yen: number | null;
+  market_link: {
+    collectible_code: string;
+    snkrdunk_product_id: number;
+    condition_grade: ConditionGrade;
+  } | null;
+};
+
+function mapBatchMarketLink(
+  holdingId: string,
+  link: BatchHoldingRow["market_link"],
+): CollectibleMarketLink | null {
+  if (!link) {
+    return null;
+  }
+  return {
+    holdingId,
+    collectibleCode: link.collectible_code,
+    snkrdunkProductId: link.snkrdunk_product_id,
+    conditionGrade: link.condition_grade,
+    lastFetchedAt: null,
+    lastFetchError: null,
+  };
+}
+
+export async function createHoldingsBatch(params: {
+  householdId: string;
+  rows: BulkHoldingQueueItem[];
+}): Promise<{ holdings: Holding[]; marketLinks: CollectibleMarketLink[] }> {
+  if (params.rows.length === 0) {
+    throw new Error("At least one holding is required.");
+  }
+
+  for (const row of params.rows) {
+    const nameError = validateHoldingName(row.name);
+    if (nameError) {
+      throw new Error(nameError);
+    }
+    const quantityError = validateHoldingQuantity(row.quantity);
+    if (quantityError) {
+      throw new Error(quantityError);
+    }
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc("create_holdings_batch", {
+    p_payload: {
+      household_id: params.householdId,
+      holdings: params.rows.map((row) => ({
+        name: row.name,
+        asset_class_id: row.assetClassId,
+        quantity: row.quantity,
+        cost_basis_yen: row.costBasisYen,
+        market_link: {
+          collectible_code: row.collectibleCode,
+          snkrdunk_product_id: row.snkrdunkProductId,
+          condition_grade: row.conditionGrade,
+        },
+      })),
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data ?? []) as BatchHoldingRow[];
+  const holdings: Holding[] = rows.map((row) => ({
+    id: row.id,
+    assetClassId: row.asset_class_id,
+    name: row.name,
+    quantity: row.quantity == null ? null : Number(row.quantity),
+    costBasisYen: row.cost_basis_yen,
+  }));
+  const marketLinks = rows
+    .map((row) => mapBatchMarketLink(row.id, row.market_link))
+    .filter((link): link is CollectibleMarketLink => link != null);
+
+  return { holdings, marketLinks };
 }

@@ -1,4 +1,5 @@
 import type { AssetClass } from "@/household/asset-classes";
+import type { BulkHoldingQueueItem } from "@/household/holding-bulk-queue";
 import {
   CONDITION_GRADE_LABELS,
   CONDITION_GRADES,
@@ -148,6 +149,144 @@ export function PortfolioHoldingSheet({
           {busy ? "Deleting…" : "Delete holding"}
         </PrimaryAction>
       ) : null}
+    </SheetOverlay>
+  );
+}
+
+export function PortfolioBulkAddSheet({
+  open,
+  assetClasses,
+  collectiblesClassId,
+  assetClassId,
+  conditionGrade,
+  name,
+  quantity,
+  collectibleCode,
+  snkrdunkProductId,
+  queue,
+  duplicateWarning,
+  busy,
+  error,
+  onClose,
+  onAssetClassIdChange,
+  onConditionGradeChange,
+  onNameChange,
+  onQuantityChange,
+  onCollectibleCodeChange,
+  onSnkrdunkProductIdChange,
+  onAddAnother,
+  onSaveAll,
+}: {
+  open: boolean;
+  assetClasses: AssetClass[];
+  collectiblesClassId: string;
+  assetClassId: string;
+  conditionGrade: ConditionGrade | "";
+  name: string;
+  quantity: string;
+  collectibleCode: string;
+  snkrdunkProductId: string;
+  queue: BulkHoldingQueueItem[];
+  duplicateWarning: boolean;
+  busy: boolean;
+  error: string | null;
+  onClose: () => void;
+  onAssetClassIdChange: (value: string) => void;
+  onConditionGradeChange: (value: ConditionGrade | "") => void;
+  onNameChange: (value: string) => void;
+  onQuantityChange: (value: string) => void;
+  onCollectibleCodeChange: (value: string) => void;
+  onSnkrdunkProductIdChange: (value: string) => void;
+  onAddAnother: () => void;
+  onSaveAll: () => void;
+}) {
+  const totalCount = queue.length;
+  const canAddAnother =
+    !busy && name.trim() !== "" && collectibleCode.trim() !== "" && conditionGrade !== "";
+
+  return (
+    <SheetOverlay open={open} onClose={onClose} title="Bulk add collectibles">
+      <Field label="Asset class">
+        <SelectField
+          value={assetClassId || collectiblesClassId}
+          onChange={onAssetClassIdChange}
+          disabled={busy}
+        >
+          {assetClasses.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name}
+            </option>
+          ))}
+        </SelectField>
+      </Field>
+      <Field label="Condition grade">
+        <SelectField
+          value={conditionGrade}
+          onChange={(value) => onConditionGradeChange(value as ConditionGrade | "")}
+          disabled={busy}
+        >
+          <option value="">Select grade</option>
+          {CONDITION_GRADES.map((grade) => (
+            <option key={grade} value={grade}>
+              {CONDITION_GRADE_LABELS[grade]}
+            </option>
+          ))}
+        </SelectField>
+      </Field>
+      <Field label="Name">
+        <TextField
+          value={name}
+          onChange={onNameChange}
+          placeholder="PSA 10 Charizard"
+          disabled={busy}
+        />
+      </Field>
+      <Field label="Collectible code">
+        <TextField
+          value={collectibleCode}
+          onChange={onCollectibleCodeChange}
+          placeholder="P-159"
+          disabled={busy}
+        />
+      </Field>
+      <Field label="SNKRDUNK product ID">
+        <TextField
+          value={snkrdunkProductId}
+          onChange={onSnkrdunkProductIdChange}
+          placeholder="854923"
+          disabled={busy}
+        />
+      </Field>
+      <Field label="Quantity (optional)">
+        <TextField
+          value={quantity}
+          onChange={onQuantityChange}
+          placeholder="Leave blank for total-value-only items"
+          disabled={busy}
+        />
+      </Field>
+      {duplicateWarning ? (
+        <p className="text-[13px] font-medium text-[#ff9500]">
+          This code, grade, and product ID are already in the queue.
+        </p>
+      ) : null}
+      {queue.length > 0 ? (
+        <div className="space-y-2 rounded-2xl border border-[#ececee] p-4 dark:border-neutral-800">
+          <p className="text-[15px] font-semibold">Queued ({queue.length})</p>
+          {queue.map((item) => (
+            <p key={item.clientKey} className="text-[14px] text-neutral-600 dark:text-neutral-400">
+              {item.name} · {item.collectibleCode}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {error ? <ErrorNote message={error} /> : null}
+      <PrimaryAction variant="secondary" disabled={!canAddAnother} onClick={onAddAnother}>
+        Add another
+      </PrimaryAction>
+      <PrimaryAction disabled={busy || totalCount === 0} onClick={onSaveAll}>
+        {busy ? "Saving…" : `Save all (${totalCount})`}
+      </PrimaryAction>
     </SheetOverlay>
   );
 }
