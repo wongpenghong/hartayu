@@ -99,6 +99,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      collectible_market_links: {
+        Row: {
+          collectible_code: string;
+          condition_grade: string;
+          created_at: string;
+          holding_id: string;
+          last_fetch_error: string | null;
+          last_fetched_at: string | null;
+          snkrdunk_product_id: number;
+        };
+        Insert: {
+          collectible_code: string;
+          condition_grade: string;
+          created_at?: string;
+          holding_id: string;
+          last_fetch_error?: string | null;
+          last_fetched_at?: string | null;
+          snkrdunk_product_id: number;
+        };
+        Update: {
+          collectible_code?: string;
+          condition_grade?: string;
+          created_at?: string;
+          holding_id?: string;
+          last_fetch_error?: string | null;
+          last_fetched_at?: string | null;
+          snkrdunk_product_id?: number;
+        };
+        Relationships: [];
+      };
       categories: {
         Row: {
           emoji: string | null;

@@ -8,6 +8,18 @@ import {
   updateHolding,
 } from "@/household/holdings";
 import {
+  deleteCollectibleMarketLink,
+  fetchCollectibleMarketLinks,
+  hasMarketLinkInput,
+  holdingShowsNoQuote,
+  isCollectiblesAssetClass,
+  parseSnkrdunkProductId,
+  refreshHouseholdMarketPrices,
+  upsertCollectibleMarketLink,
+  validateMarketLinkInput,
+  type CollectibleMarketLink,
+} from "@/household/collectible-market-links";
+import {
   createBatchSnapshotSession,
   fetchHoldingSnapshots,
   fetchSnapshotSessions,
@@ -40,6 +52,7 @@ import {
 } from "@/ledger/portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "@/ledger/portfolio";
 import { formatYenCompact, parseYenInput, todayInTokyo } from "@/lib/format-yen";
+import type { ConditionGrade } from "@/market/snkrdunk";
 import {
   HoldingPnlBadge,
   PortfolioPnlSummaryCard,
@@ -54,6 +67,7 @@ export default function PortfolioPage() {
   const { household } = useAuth();
   const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]);
   const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [marketLinks, setMarketLinks] = useState<CollectibleMarketLink[]>([]);
   const [sessions, setSessions] = useState<SnapshotSession[]>([]);
   const [snapshots, setSnapshots] = useState<HoldingSnapshot[]>([]);
   const [classFilter, setClassFilter] = useState<string>("all");
@@ -65,6 +79,11 @@ export default function PortfolioPage() {
   const [holdingClassId, setHoldingClassId] = useState("");
   const [holdingQuantity, setHoldingQuantity] = useState("");
   const [holdingCostBasis, setHoldingCostBasis] = useState("");
+  const [collectibleCode, setCollectibleCode] = useState("");
+  const [snkrdunkProductId, setSnkrdunkProductId] = useState("");
+  const [conditionGrade, setConditionGrade] = useState<ConditionGrade | "">("");
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshBusy, setRefreshBusy] = useState(false);
   const [snapshotDate, setSnapshotDate] = useState(todayInTokyo());
   const [snapshotLines, setSnapshotLines] = useState<Record<string, SnapshotLineState>>({});
   const [busy, setBusy] = useState(false);
@@ -74,6 +93,13 @@ export default function PortfolioPage() {
     () => new Map(assetClasses.map((row) => [row.id, row.name])),
     [assetClasses],
   );
+
+  const marketLinksByHolding = useMemo(
+    () => new Map(marketLinks.map((row) => [row.holdingId, row])),
+    [marketLinks],
+  );
+
+  const hasMarketLinks = marketLinks.length > 0;
 
   const latestByHolding = useMemo(
     () => latestSnapshotsByHolding(sessions, snapshots),
@@ -128,16 +154,19 @@ export default function PortfolioPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [nextClasses, nextHoldings, nextSessions, nextSnapshots] = await Promise.all([
+      const [nextClasses, nextHoldings, nextSessions, nextSnapshots, nextMarketLinks] =
+        await Promise.all([
         fetchAssetClasses(),
         fetchHoldings(),
         fetchSnapshotSessions(),
         fetchHoldingSnapshots(),
+        fetchCollectibleMarketLinks(),
       ]);
       setAssetClasses(nextClasses);
       setHoldings(nextHoldings);
       setSessions(nextSessions);
       setSnapshots(nextSnapshots);
+      setMarketLinks(nextMarketLinks);
     } catch (caught) {
       setLoadError(
         caught instanceof Error ? caught.message : "Failed to load portfolio",
@@ -153,11 +182,20 @@ export default function PortfolioPage() {
 
   useRefreshOnFocus(loadPortfolio);
 
+  function resetMarketLinkFields(link?: CollectibleMarketLink) {
+    setCollectibleCode(link?.collectibleCode ?? "");
+    setSnkrdunkProductId(
+      link?.snkrdunkProductId == null ? "" : String(link.snkrdunkProductId),
+    );
+    setConditionGrade(link?.conditionGrade ?? "");
+  }
+
   function openAddHolding() {
     setHoldingName("");
     setHoldingClassId(assetClasses[0]?.id ?? "");
     setHoldingQuantity("");
     setHoldingCostBasis("");
+    resetMarketLinkFields();
     setSheetError(null);
     setHoldingSheet({ kind: "add" });
   }
@@ -169,6 +207,7 @@ export default function PortfolioPage() {
     setHoldingCostBasis(
       holding.costBasisYen == null ? "" : String(holding.costBasisYen),
     );
+    resetMarketLinkFields(marketLinksByHolding.get(holding.id));
     setSheetError(null);
     setHoldingSheet({ kind: "edit", holding });
   }
@@ -197,10 +236,24 @@ export default function PortfolioPage() {
     const quantity =
       holdingQuantity.trim() === "" ? null : Number.parseFloat(holdingQuantity);
     const costBasisYen = parseYenInput(holdingCostBasis);
+    const showMarketLink = isCollectiblesAssetClass(holdingClassId, assetClassNames);
+    const marketLinkError = showMarketLink
+      ? validateMarketLinkInput({
+          collectibleCode,
+          snkrdunkProductId,
+          conditionGrade,
+        })
+      : null;
+
+    if (marketLinkError) {
+      setSheetError(marketLinkError);
+      return;
+    }
 
     setBusy(true);
     setSheetError(null);
     try {
+      let savedHoldingId: string;
       if (holdingSheet.kind === "add") {
         const created = await createHolding({
           householdId: household.id,
@@ -209,6 +262,7 @@ export default function PortfolioPage() {
           quantity,
           costBasisYen,
         });
+        savedHoldingId = created.id;
         setHoldings((rows) => [...rows, created].sort((a, b) => a.name.localeCompare(b.name)));
       } else if (holdingSheet.kind === "edit") {
         const updated = await updateHolding(holdingSheet.holding.id, {
@@ -217,12 +271,35 @@ export default function PortfolioPage() {
           quantity,
           costBasisYen,
         });
+        savedHoldingId = updated.id;
         setHoldings((rows) =>
           rows
             .map((row) => (row.id === updated.id ? updated : row))
             .sort((a, b) => a.name.localeCompare(b.name)),
         );
+      } else {
+        return;
       }
+
+      const wantsMarketLink =
+        showMarketLink &&
+        hasMarketLinkInput({ collectibleCode, snkrdunkProductId, conditionGrade });
+      if (wantsMarketLink) {
+        const savedLink = await upsertCollectibleMarketLink({
+          holdingId: savedHoldingId,
+          collectibleCode,
+          snkrdunkProductId: parseSnkrdunkProductId(snkrdunkProductId)!,
+          conditionGrade: conditionGrade as ConditionGrade,
+        });
+        setMarketLinks((rows) => {
+          const next = rows.filter((row) => row.holdingId !== savedHoldingId);
+          return [...next, savedLink];
+        });
+      } else {
+        await deleteCollectibleMarketLink(savedHoldingId);
+        setMarketLinks((rows) => rows.filter((row) => row.holdingId !== savedHoldingId));
+      }
+
       setHoldingSheet({ kind: "closed" });
     } catch (caught) {
       setSheetError(caught instanceof Error ? caught.message : "Failed to save holding");
@@ -240,7 +317,11 @@ export default function PortfolioPage() {
     setSheetError(null);
     try {
       await deleteHolding(holdingSheet.holding.id);
+      await deleteCollectibleMarketLink(holdingSheet.holding.id);
       setHoldings((rows) => rows.filter((row) => row.id !== holdingSheet.holding.id));
+      setMarketLinks((rows) =>
+        rows.filter((row) => row.holdingId !== holdingSheet.holding.id),
+      );
       setSnapshots((rows) =>
         rows.filter((row) => row.holdingId !== holdingSheet.holding.id),
       );
@@ -249,6 +330,25 @@ export default function PortfolioPage() {
       setSheetError(caught instanceof Error ? caught.message : "Failed to delete holding");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleRefreshMarketPrices() {
+    if (!household) {
+      return;
+    }
+
+    setRefreshBusy(true);
+    setRefreshError(null);
+    try {
+      await refreshHouseholdMarketPrices(household.id);
+      await loadPortfolio();
+    } catch (caught) {
+      setRefreshError(
+        caught instanceof Error ? caught.message : "Failed to refresh market prices",
+      );
+    } finally {
+      setRefreshBusy(false);
     }
   }
 
@@ -318,6 +418,7 @@ export default function PortfolioPage() {
 
       <main className="flex flex-1 flex-col gap-4 px-4 pb-28">
         {loadError ? <ErrorNote message={loadError} /> : null}
+        {refreshError ? <ErrorNote message={refreshError} /> : null}
 
         <PillTabs value={classFilter} onChange={setClassFilter} options={filterOptions} />
 
@@ -363,6 +464,13 @@ export default function PortfolioPage() {
               <span className="text-[17px] font-medium text-[#007aff]">Update values</span>
             </ListRow>
           ) : null}
+          {hasMarketLinks ? (
+            <ListRow onClick={() => void handleRefreshMarketPrices()}>
+              <span className="text-[17px] font-medium text-[#007aff]">
+                {refreshBusy ? "Refreshing prices…" : "Refresh prices"}
+              </span>
+            </ListRow>
+          ) : null}
           {loading ? (
             <EmptyState message="Loading holdings…" />
           ) : visibleHoldings.length === 0 ? (
@@ -370,9 +478,11 @@ export default function PortfolioPage() {
           ) : (
             visibleHoldings.map((holding) => {
               const snapshot = latestByHolding.get(holding.id);
+              const link = marketLinksByHolding.get(holding.id);
               const valueYen =
                 snapshot != null ? holdingValueYen(holding, snapshot) : null;
               const pnl = holdingPnl(holding, snapshot);
+              const noQuote = holdingShowsNoQuote(link, snapshot);
               const quantityLabel =
                 holding.quantity != null ? ` · ${holding.quantity} units` : " · Total value";
               const costLabel =
@@ -389,13 +499,22 @@ export default function PortfolioPage() {
                       {assetClassNames.get(holding.assetClassId) ?? "Class"}
                       {quantityLabel}
                       {costLabel}
+                      {link ? ` · ${link.collectibleCode}` : ""}
                     </span>
                   </span>
                   <span className="flex flex-col items-end gap-0.5">
-                    <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
-                      {valueYen == null ? "—" : formatYenCompact(valueYen)}
-                    </span>
-                    <HoldingPnlBadge pnlYen={pnl.pnlYen} returnPct={pnl.returnPct} />
+                    {noQuote ? (
+                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                        No quote
+                      </span>
+                    ) : (
+                      <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
+                        {valueYen == null ? "—" : formatYenCompact(valueYen)}
+                      </span>
+                    )}
+                    {!noQuote ? (
+                      <HoldingPnlBadge pnlYen={pnl.pnlYen} returnPct={pnl.returnPct} />
+                    ) : null}
                   </span>
                   <span className="text-[20px] text-neutral-300">›</span>
                 </ListRow>
@@ -412,6 +531,10 @@ export default function PortfolioPage() {
         assetClassId={holdingClassId}
         quantity={holdingQuantity}
         costBasis={holdingCostBasis}
+        showMarketLinkFields={isCollectiblesAssetClass(holdingClassId, assetClassNames)}
+        collectibleCode={collectibleCode}
+        snkrdunkProductId={snkrdunkProductId}
+        conditionGrade={conditionGrade}
         busy={busy}
         error={sheetError}
         onClose={() => setHoldingSheet({ kind: "closed" })}
@@ -419,6 +542,9 @@ export default function PortfolioPage() {
         onAssetClassIdChange={setHoldingClassId}
         onQuantityChange={setHoldingQuantity}
         onCostBasisChange={setHoldingCostBasis}
+        onCollectibleCodeChange={setCollectibleCode}
+        onSnkrdunkProductIdChange={setSnkrdunkProductId}
+        onConditionGradeChange={setConditionGrade}
         onSave={() => void handleSaveHolding()}
         onDelete={() => void handleDeleteHolding()}
       />

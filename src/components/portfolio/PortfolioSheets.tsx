@@ -1,4 +1,9 @@
 import type { AssetClass } from "@/household/asset-classes";
+import {
+  CONDITION_GRADE_LABELS,
+  CONDITION_GRADES,
+  type ConditionGrade,
+} from "@/market/snkrdunk";
 import type { Holding } from "@/ledger/portfolio";
 import {
   CheckboxField,
@@ -19,6 +24,10 @@ export function PortfolioHoldingSheet({
   assetClassId,
   quantity,
   costBasis,
+  showMarketLinkFields,
+  collectibleCode,
+  snkrdunkProductId,
+  conditionGrade,
   busy,
   error,
   onClose,
@@ -26,6 +35,9 @@ export function PortfolioHoldingSheet({
   onAssetClassIdChange,
   onQuantityChange,
   onCostBasisChange,
+  onCollectibleCodeChange,
+  onSnkrdunkProductIdChange,
+  onConditionGradeChange,
   onSave,
   onDelete,
 }: {
@@ -35,6 +47,10 @@ export function PortfolioHoldingSheet({
   assetClassId: string;
   quantity: string;
   costBasis: string;
+  showMarketLinkFields: boolean;
+  collectibleCode: string;
+  snkrdunkProductId: string;
+  conditionGrade: ConditionGrade | "";
   busy: boolean;
   error: string | null;
   onClose: () => void;
@@ -42,6 +58,9 @@ export function PortfolioHoldingSheet({
   onAssetClassIdChange: (value: string) => void;
   onQuantityChange: (value: string) => void;
   onCostBasisChange: (value: string) => void;
+  onCollectibleCodeChange: (value: string) => void;
+  onSnkrdunkProductIdChange: (value: string) => void;
+  onConditionGradeChange: (value: ConditionGrade | "") => void;
   onSave: () => void;
   onDelete: () => void;
 }) {
@@ -79,6 +98,44 @@ export function PortfolioHoldingSheet({
       <Field label="Total cost (optional)">
         <YenAmountField value={costBasis} onChange={onCostBasisChange} disabled={busy} />
       </Field>
+      {showMarketLinkFields ? (
+        <div className="space-y-4 rounded-2xl border border-[#ececee] p-4 dark:border-neutral-800">
+          <p className="text-[15px] font-semibold">SNKRDUNK market link (optional)</p>
+          <Field label="Collectible code">
+            <TextField
+              value={collectibleCode}
+              onChange={onCollectibleCodeChange}
+              placeholder="P-159"
+              disabled={busy}
+            />
+          </Field>
+          <Field label="SNKRDUNK product ID">
+            <TextField
+              value={snkrdunkProductId}
+              onChange={onSnkrdunkProductIdChange}
+              placeholder="854923"
+              disabled={busy}
+            />
+          </Field>
+          <p className="text-[13px] text-neutral-500">
+            From URL /apparels/854923 → use 854923
+          </p>
+          <Field label="Condition grade">
+            <SelectField
+              value={conditionGrade}
+              onChange={(value) => onConditionGradeChange(value as ConditionGrade | "")}
+              disabled={busy}
+            >
+              <option value="">Select grade</option>
+              {CONDITION_GRADES.map((grade) => (
+                <option key={grade} value={grade}>
+                  {CONDITION_GRADE_LABELS[grade]}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+        </div>
+      ) : null}
       {error ? <ErrorNote message={error} /> : null}
       <PrimaryAction
         disabled={busy || !name.trim() || !assetClassId}
