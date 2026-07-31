@@ -12,6 +12,7 @@ import type {
   RemainingBudgetRow,
   SegmentTotal,
 } from "./types";
+import { attributionSegmentId } from "@/household/attribution";
 import { shiftMonth } from "@/lib/format-yen";
 
 function entryDelta(entry: Entry): number {
@@ -268,7 +269,8 @@ export function totalsByMember(
       continue;
     }
 
-    totals.set(entry.memberId, (totals.get(entry.memberId) ?? 0) + entry.amountYen);
+    const segmentId = attributionSegmentId(entry);
+    totals.set(segmentId, (totals.get(segmentId) ?? 0) + entry.amountYen);
   }
 
   return [...totals.entries()]

@@ -99,6 +99,7 @@ export type Database = {
           id: string;
           kind: "expense" | "income" | "transfer";
           member_id: string;
+          attributed_member_id: string | null;
           note: string | null;
           to_account_id: string | null;
           updated_at: string;
@@ -106,6 +107,7 @@ export type Database = {
         Insert: {
           account_id: string;
           amount_yen: number;
+          attributed_member_id?: string | null;
           category_id?: string | null;
           created_at?: string;
           entry_date: string;
@@ -121,6 +123,7 @@ export type Database = {
         Update: {
           account_id?: string;
           amount_yen?: number;
+          attributed_member_id?: string | null;
           category_id?: string | null;
           created_at?: string;
           entry_date?: string;
@@ -144,6 +147,7 @@ export type Database = {
           household_id: string;
           id: string;
           member_id: string;
+          attributed_member_id: string | null;
           note: string | null;
         };
         Insert: {

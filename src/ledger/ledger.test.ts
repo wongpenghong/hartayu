@@ -38,6 +38,7 @@ function entry(
     toPocketId: null,
     categoryId: "cat-a",
     memberId: "member-a",
+    attributedMemberId: "member-a",
     foreignAmountIdr: null,
     note: null,
     createdAt: "2026-07-01T00:00:00Z",
@@ -318,6 +319,43 @@ describe("ledger", () => {
     expect(expenseTotalsByRecentMonths(entries, 2026, 7, 2)).toEqual([
       { id: "2026-06", year: 2026, month: 6, totalYen: 200 },
       { id: "2026-07", year: 2026, month: 7, totalYen: 2_000 },
+    ]);
+  });
+
+  it("groups member breakdown by attribution including family", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 100_000,
+        entryDate: "2026-07-01",
+        memberId: "member-a",
+        attributedMemberId: null,
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 500,
+        entryDate: "2026-07-02",
+        memberId: "member-a",
+        attributedMemberId: "member-b",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-b",
+        kind: "expense",
+        amountYen: 300,
+        entryDate: "2026-07-03",
+        memberId: "member-b",
+        attributedMemberId: "member-b",
+      }),
+    ];
+
+    expect(expenseTotalsByMember(entries, 2026, 7)).toEqual([
+      { id: "family", totalYen: 100_000 },
+      { id: "member-b", totalYen: 800 },
     ]);
   });
 

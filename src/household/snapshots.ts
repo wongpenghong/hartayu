@@ -111,7 +111,7 @@ export function resolveSnapshotInsert(
   unit_price_yen: number | null;
   total_value_yen: number | null;
   carried_forward: boolean;
-} | null {
+} {
   const lineError = validateSnapshotLine(hasQuantity, line);
   if (lineError) {
     throw new Error(lineError);

@@ -8,6 +8,7 @@ import {
 } from "react";
 import { EntrySheet } from "@/components/EntrySheet";
 import type { Category } from "@/household/categories";
+import type { HouseholdMember } from "@/household/members";
 import type { Pocket } from "@/household/pockets";
 import type { Entry } from "@/ledger/types";
 
@@ -23,6 +24,7 @@ const EntrySheetContext = createContext<EntrySheetContextValue | null>(null);
 export function EntrySheetProvider({
   householdId,
   userId,
+  members,
   pockets,
   categories,
   entries,
@@ -31,6 +33,7 @@ export function EntrySheetProvider({
 }: {
   householdId: string;
   userId: string;
+  members: HouseholdMember[];
   pockets: Pocket[];
   categories: Category[];
   entries: Entry[];
@@ -92,6 +95,7 @@ export function EntrySheetProvider({
         onDeleted={() => notifyEntryChanged()}
         householdId={householdId}
         userId={userId}
+        members={members}
         entry={entry}
         pockets={pockets}
         categories={categories}

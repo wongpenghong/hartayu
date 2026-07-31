@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   allocationByAssetClass,
+  allocationByAssetClassLatest,
   allocationByHolding,
   holdingValueYen,
+  latestSessionId,
   latestSnapshotsByHolding,
   portfolioTrendPoints,
 } from "./portfolio";
@@ -30,8 +32,12 @@ function snapshot(
   };
 }
 
-function session(id: string, asOfDate: string): SnapshotSession {
-  return { id, asOfDate, createdAt: `${asOfDate}T00:00:00Z` };
+function session(
+  id: string,
+  asOfDate: string,
+  createdAt = `${asOfDate}T00:00:00Z`,
+): SnapshotSession {
+  return { id, asOfDate, createdAt };
 }
 
 describe("holdingValueYen", () => {
@@ -137,5 +143,40 @@ describe("latestSnapshotsByHolding", () => {
 
     const latest = latestSnapshotsByHolding(sessions, snapshots);
     expect(latest.get("h1")?.unitPriceYen).toBe(2_000);
+  });
+
+  it("breaks ties on same as-of date using created_at", () => {
+    const sessions = [
+      session("s1", "2026-07-31", "2026-07-31T08:00:00Z"),
+      session("s2", "2026-07-31", "2026-07-31T12:00:00Z"),
+    ];
+    const snapshots = [
+      snapshot({ holdingId: "h1", sessionId: "s1", unitPriceYen: 0 }),
+      snapshot({ holdingId: "h1", sessionId: "s2", unitPriceYen: 28_000 }),
+    ];
+
+    expect(latestSnapshotsByHolding(sessions, snapshots).get("h1")?.unitPriceYen).toBe(
+      28_000,
+    );
+    expect(latestSessionId(sessions)).toBe("s2");
+  });
+});
+
+describe("allocationByAssetClassLatest", () => {
+  it("uses latest snapshot per holding instead of earliest same-day session", () => {
+    const holdings = [holding({ id: "h1", assetClassId: "collectibles", quantity: 10 })];
+    const sessions = [
+      session("s1", "2026-07-31", "2026-07-31T08:00:00Z"),
+      session("s2", "2026-07-31", "2026-07-31T12:00:00Z"),
+    ];
+    const snapshots = [
+      snapshot({ holdingId: "h1", sessionId: "s1", unitPriceYen: 0 }),
+      snapshot({ holdingId: "h1", sessionId: "s2", unitPriceYen: 28_000 }),
+    ];
+
+    expect(allocationByAssetClassLatest(holdings, sessions, snapshots)).toEqual([
+      { id: "collectibles", totalYen: 280_000 },
+    ]);
+    expect(allocationByAssetClass(holdings, snapshots, "s1")).toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
 import type { Entry } from "@/ledger/types";
+import { entryAttributionLabel } from "@/household/attribution";
 import type { HouseholdMember } from "@/household/members";
-import { memberName } from "@/household/member-utils";
 import {
   entryAmountTone,
   formatDayGroupHeader,
@@ -76,11 +76,11 @@ function EntryRow({
         {showDate ? (
           <span className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-neutral-400">
             <span>{formatEntryDate(entry.entryDate)}</span>
-            <MemberChip label={memberName(members, entry.memberId)} />
+            <MemberChip label={entryAttributionLabel(members, entry)} />
           </span>
         ) : (
           <span className="mt-1 block text-[12px] text-neutral-400">
-            <MemberChip label={memberName(members, entry.memberId)} />
+            <MemberChip label={entryAttributionLabel(members, entry)} />
           </span>
         )}
       </span>

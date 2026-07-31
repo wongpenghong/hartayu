@@ -29,10 +29,9 @@ import {
 } from "@/components/NativeUI";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import {
-  allocationByAssetClass,
-  allocationByHolding,
+  allocationByAssetClassLatest,
+  allocationByHoldingLatest,
   holdingValueYen,
-  latestSessionId,
   latestSnapshotsByHolding,
   portfolioTrendPoints,
 } from "@/ledger/portfolio";
@@ -69,7 +68,6 @@ export default function PortfolioPage() {
     [assetClasses],
   );
 
-  const latestSession = latestSessionId(sessions);
   const latestByHolding = useMemo(
     () => latestSnapshotsByHolding(sessions, snapshots),
     [sessions, snapshots],
@@ -92,13 +90,10 @@ export default function PortfolioPage() {
   }, [classFilter, holdings, sessions, snapshots]);
 
   const donutSegments = useMemo(() => {
-    if (!latestSession) {
-      return [];
-    }
     const rows =
       classFilter === "all"
-        ? allocationByAssetClass(holdings, snapshots, latestSession)
-        : allocationByHolding(holdings, snapshots, latestSession, classFilter);
+        ? allocationByAssetClassLatest(holdings, sessions, snapshots)
+        : allocationByHoldingLatest(holdings, sessions, snapshots, classFilter);
     return rows.map((row, index) => ({
       id: row.id,
       label:
@@ -108,7 +103,7 @@ export default function PortfolioPage() {
       value: row.totalYen,
       color: breakdownColor(index),
     }));
-  }, [assetClassNames, classFilter, holdings, latestSession, snapshots]);
+  }, [assetClassNames, classFilter, holdings, sessions, snapshots]);
 
   const loadPortfolio = useCallback(async () => {
     setLoading(true);

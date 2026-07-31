@@ -6,6 +6,7 @@ export type Entry = {
   toPocketId: string | null;
   categoryId: string | null;
   memberId: string;
+  attributedMemberId: string | null;
   kind: EntryKind;
   amountYen: number;
   foreignAmountIdr: number | null;

@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category } from "@/household/categories";
 import {
+  attributedMemberIdFromPicker,
+  attributionPickerValue,
+  FAMILY_ATTRIBUTION_ID,
+  partnerMember,
+} from "@/household/attribution";
+import type { HouseholdMember } from "@/household/members";
+import {
   categoriesForKind,
   defaultCategoryId,
 } from "@/household/category-utils";
@@ -57,6 +64,7 @@ type EntrySheetProps = {
   onDeleted?: () => void;
   householdId: string;
   userId: string;
+  members: HouseholdMember[];
   entry: Entry | null;
   pockets: Pocket[];
   categories: Category[];
@@ -70,6 +78,7 @@ export function EntrySheet({
   onDeleted,
   householdId,
   userId,
+  members,
   entry,
   pockets,
   categories,
@@ -85,14 +94,27 @@ export function EntrySheet({
   const [categoryId, setCategoryId] = useState("");
   const [entryDate, setEntryDate] = useState(todayInTokyo());
   const [note, setNote] = useState("");
+  const [attribution, setAttribution] = useState(userId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const partner = useMemo(
+    () => partnerMember(members, userId),
+    [members, userId],
+  );
   const visiblePockets = useMemo(() => activePockets(pockets), [pockets]);
   const visibleCategories = useMemo(
     () => (kind === "transfer" ? [] : categoriesForKind(categories, kind)),
     [categories, kind],
   );
+  const attributionOptions = useMemo(() => {
+    const options = [{ value: userId, label: "Me" }];
+    if (partner) {
+      options.push({ value: partner.user_id, label: partner.username });
+    }
+    options.push({ value: FAMILY_ATTRIBUTION_ID, label: "Family" });
+    return options;
+  }, [partner, userId]);
   const recentCategories = useMemo(() => {
     if (kind === "transfer") {
       return [];
@@ -124,6 +146,7 @@ export function EntrySheet({
       setCategoryId(entry.categoryId ?? "");
       setEntryDate(entry.entryDate);
       setNote(entry.note ?? "");
+      setAttribution(attributionPickerValue(entry, userId));
     } else {
       setKind("expense");
       setAmountInput("");
@@ -136,6 +159,7 @@ export function EntrySheet({
       setCategoryId(defaultCategoryId(categories, "expense"));
       setEntryDate(todayInTokyo());
       setNote("");
+      setAttribution(userId);
     }
 
     setError(null);
@@ -313,6 +337,7 @@ export function EntrySheet({
         foreignAmountIdr,
         pocketId,
         categoryId,
+        attributedMemberId: attributedMemberIdFromPicker(attribution),
         entryDate,
         note,
       };
@@ -480,6 +505,14 @@ export function EntrySheet({
                 {expenseBalanceWarning}
               </p>
             ) : null}
+          </Field>
+
+          <Field label="For">
+            <PillTabs
+              value={attribution}
+              onChange={setAttribution}
+              options={attributionOptions}
+            />
           </Field>
         </>
       )}

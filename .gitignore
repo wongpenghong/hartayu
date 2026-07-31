@@ -7,7 +7,7 @@ dist
 
 # AI
 .cursor
-.docs
+.docs/*
 docs
 CONTEXT.md
 CLAUDE.md

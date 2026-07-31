@@ -33,16 +33,32 @@ export function holdingValueYen(holding: Holding, snapshot: HoldingSnapshot): nu
   return 0;
 }
 
+function sessionsById(sessions: SnapshotSession[]): Map<string, SnapshotSession> {
+  return new Map(sessions.map((row) => [row.id, row]));
+}
+
+export function compareSnapshotSessions(
+  sessionA: SnapshotSession | undefined,
+  sessionB: SnapshotSession | undefined,
+): number {
+  const byDate = (sessionB?.asOfDate ?? "").localeCompare(sessionA?.asOfDate ?? "");
+  if (byDate !== 0) {
+    return byDate;
+  }
+  return (sessionB?.createdAt ?? "").localeCompare(sessionA?.createdAt ?? "");
+}
+
 export function latestSnapshotsByHolding(
   sessions: SnapshotSession[],
   snapshots: HoldingSnapshot[],
 ): Map<string, HoldingSnapshot> {
-  const sessionDates = new Map(sessions.map((row) => [row.id, row.asOfDate]));
-  const sorted = [...snapshots].sort((a, b) => {
-    const dateA = sessionDates.get(a.sessionId) ?? "";
-    const dateB = sessionDates.get(b.sessionId) ?? "";
-    return dateB.localeCompare(dateA);
-  });
+  const sessionLookup = sessionsById(sessions);
+  const sorted = [...snapshots].sort((a, b) =>
+    compareSnapshotSessions(
+      sessionLookup.get(a.sessionId),
+      sessionLookup.get(b.sessionId),
+    ),
+  );
   const latest = new Map<string, HoldingSnapshot>();
   for (const row of sorted) {
     if (!latest.has(row.holdingId)) {
@@ -126,5 +142,49 @@ export function latestSessionId(sessions: SnapshotSession[]): string | null {
   if (sessions.length === 0) {
     return null;
   }
-  return [...sessions].sort((a, b) => b.asOfDate.localeCompare(a.asOfDate))[0].id;
+  return [...sessions].sort((a, b) => compareSnapshotSessions(a, b))[0].id;
+}
+
+export function allocationByAssetClassLatest(
+  holdings: Holding[],
+  sessions: SnapshotSession[],
+  snapshots: HoldingSnapshot[],
+): SegmentTotal[] {
+  const latest = latestSnapshotsByHolding(sessions, snapshots);
+  const holdingsById = new Map(holdings.map((holding) => [holding.id, holding]));
+  const totals = new Map<string, number>();
+
+  for (const [holdingId, row] of latest) {
+    const holding = holdingsById.get(holdingId);
+    if (!holding) {
+      continue;
+    }
+    const value = holdingValueYen(holding, row);
+    totals.set(holding.assetClassId, (totals.get(holding.assetClassId) ?? 0) + value);
+  }
+
+  return [...totals.entries()]
+    .map(([id, totalYen]) => ({ id, totalYen }))
+    .filter((row) => row.totalYen > 0)
+    .sort((a, b) => b.totalYen - a.totalYen);
+}
+
+export function allocationByHoldingLatest(
+  holdings: Holding[],
+  sessions: SnapshotSession[],
+  snapshots: HoldingSnapshot[],
+  assetClassId: string,
+): SegmentTotal[] {
+  const latest = latestSnapshotsByHolding(sessions, snapshots);
+  const scopedHoldings = holdings.filter((holding) => holding.assetClassId === assetClassId);
+  const holdingsById = new Map(scopedHoldings.map((holding) => [holding.id, holding]));
+
+  return [...latest.entries()]
+    .filter(([holdingId]) => holdingsById.has(holdingId))
+    .map(([holdingId, row]) => {
+      const holding = holdingsById.get(holdingId)!;
+      return { id: holding.id, totalYen: holdingValueYen(holding, row) };
+    })
+    .filter((row) => row.totalYen > 0)
+    .sort((a, b) => b.totalYen - a.totalYen);
 }

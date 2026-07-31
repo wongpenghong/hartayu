@@ -7,6 +7,7 @@ type EntryRow = {
   to_account_id: string | null;
   category_id: string | null;
   member_id: string;
+  attributed_member_id: string | null;
   kind: EntryKind;
   amount_yen: number;
   foreign_amount_idr: number | null;
@@ -22,6 +23,7 @@ function mapEntry(row: EntryRow): Entry {
     toPocketId: row.to_account_id,
     categoryId: row.category_id,
     memberId: row.member_id,
+    attributedMemberId: row.attributed_member_id,
     kind: row.kind,
     amountYen: row.amount_yen,
     foreignAmountIdr: row.foreign_amount_idr,
@@ -32,7 +34,7 @@ function mapEntry(row: EntryRow): Entry {
 }
 
 const entrySelect =
-  "id, account_id, to_account_id, category_id, member_id, kind, amount_yen, foreign_amount_idr, entry_date, note, created_at";
+  "id, account_id, to_account_id, category_id, member_id, attributed_member_id, kind, amount_yen, foreign_amount_idr, entry_date, note, created_at";
 
 export async function fetchEntries(): Promise<Entry[]> {
   const supabase = getSupabase();
@@ -57,6 +59,7 @@ function normalizeNote(note?: string | null): string | null {
 export async function createEntry(params: {
   householdId: string;
   memberId: string;
+  attributedMemberId: string | null;
   kind: Exclude<EntryKind, "transfer">;
   amountYen: number;
   foreignAmountIdr?: number | null;
@@ -72,6 +75,7 @@ export async function createEntry(params: {
     .insert({
       household_id: params.householdId,
       member_id: params.memberId,
+      attributed_member_id: params.attributedMemberId,
       kind: params.kind,
       amount_yen: params.amountYen,
       foreign_amount_idr: params.foreignAmountIdr ?? null,
@@ -106,6 +110,7 @@ export async function createTransfer(params: {
     .insert({
       household_id: params.householdId,
       member_id: params.memberId,
+      attributed_member_id: params.memberId,
       kind: "transfer",
       amount_yen: params.amountYen,
       foreign_amount_idr: null,
@@ -133,6 +138,7 @@ export async function updateEntry(
     foreignAmountIdr: number | null;
     pocketId: string;
     categoryId: string;
+    attributedMemberId: string | null;
     entryDate: string;
     note?: string | null;
   },
@@ -147,6 +153,7 @@ export async function updateEntry(
       foreign_amount_idr: updates.foreignAmountIdr,
       account_id: updates.pocketId,
       category_id: updates.categoryId,
+      attributed_member_id: updates.attributedMemberId,
       entry_date: updates.entryDate,
       note: normalizeNote(updates.note),
     })

@@ -13,6 +13,7 @@ function entry(
     toPocketId: null,
     categoryId: "cat-a",
     memberId: "member-a",
+    attributedMemberId: "member-a",
     foreignAmountIdr: null,
     note: null,
     createdAt: "2026-07-01T00:00:00Z",

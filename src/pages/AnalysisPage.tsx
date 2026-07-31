@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { FAMILY_ATTRIBUTION_ID } from "@/household/attribution";
 import { categoryNameById } from "@/household/category-utils";
 import { breakdownColor } from "@/household/breakdown-colors";
 import { fetchCategories } from "@/household/categories";
@@ -86,7 +87,10 @@ export default function AnalysisPage() {
       return totalsByMember(entries, month.year, month.month).map(
         (row, index) => ({
           id: row.id,
-          label: memberName(members, row.id),
+          label:
+            row.id === FAMILY_ATTRIBUTION_ID
+              ? "Family"
+              : memberName(members, row.id),
           value: row.totalYen,
           color: breakdownColor(index),
         }),
