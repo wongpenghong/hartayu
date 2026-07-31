@@ -36,21 +36,42 @@ function polarToCartesian(radius: number, angle: number) {
   };
 }
 
+function segmentOpacity(
+  segmentId: string,
+  selectedIds: ReadonlySet<string> | undefined,
+): number {
+  if (selectedIds == null || selectedIds.size === 0) {
+    return 1;
+  }
+  return selectedIds.has(segmentId) ? 1 : 0.25;
+}
+
 export function DonutChart({
   segments,
   centerLabel,
   emptyLabel = "No data yet.",
+  selectedIds,
+  onSegmentClick,
 }: {
   segments: DonutSegment[];
   centerLabel: string;
   emptyLabel?: string;
+  selectedIds?: ReadonlySet<string>;
+  onSegmentClick?: (segmentId: string) => void;
 }) {
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
   const visibleSegments = segments.filter((segment) => segment.value > 0);
+  const ringTotal = visibleSegments.reduce((sum, segment) => sum + segment.value, 0);
+  const hasSelection = selectedIds != null && selectedIds.size > 0;
+  const displayTotal = hasSelection
+    ? visibleSegments
+        .filter((segment) => selectedIds.has(segment.id))
+        .reduce((sum, segment) => sum + segment.value, 0)
+    : ringTotal;
   let cursor = 0;
+  const interactive = onSegmentClick != null;
 
   function renderRing() {
-    if (total === 0) {
+    if (ringTotal === 0) {
       return (
         <circle
           cx="50"
@@ -65,20 +86,24 @@ export function DonutChart({
     }
 
     if (visibleSegments.length === 1) {
+      const segment = visibleSegments[0];
       return (
         <circle
           cx="50"
           cy="50"
           r="35"
           fill="none"
-          stroke={visibleSegments[0].color}
+          stroke={segment.color}
           strokeWidth="14"
+          opacity={segmentOpacity(segment.id, selectedIds)}
+          className={interactive ? "cursor-pointer" : undefined}
+          onClick={interactive ? () => onSegmentClick(segment.id) : undefined}
         />
       );
     }
 
     return visibleSegments.map((segment) => {
-      const sweep = Math.min((segment.value / total) * 360, 359.999);
+      const sweep = Math.min((segment.value / ringTotal) * 360, 359.999);
       const path = arcPath(cursor, cursor + sweep, 42, 28);
       cursor += sweep;
       return (
@@ -87,8 +112,10 @@ export function DonutChart({
           d={path}
           fill={segment.color}
           stroke="currentColor"
-          className="text-white dark:text-neutral-900"
+          className={`text-white dark:text-neutral-900${interactive ? " cursor-pointer" : ""}`}
           strokeWidth="0.6"
+          opacity={segmentOpacity(segment.id, selectedIds)}
+          onClick={interactive ? () => onSegmentClick(segment.id) : undefined}
         />
       );
     });
@@ -100,9 +127,9 @@ export function DonutChart({
         <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
           {renderRing()}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           <p className="text-[18px] font-bold tabular-nums">
-            {formatYenCompact(total)}
+            {formatYenCompact(displayTotal)}
           </p>
           <p className="text-[11px] text-neutral-500">{centerLabel}</p>
         </div>
@@ -113,7 +140,16 @@ export function DonutChart({
           <p className="text-[14px] text-neutral-500">{emptyLabel}</p>
         ) : (
           visibleSegments.map((segment) => (
-            <div key={segment.id} className="flex items-center gap-2">
+            <button
+              key={segment.id}
+              type="button"
+              disabled={!interactive}
+              onClick={interactive ? () => onSegmentClick(segment.id) : undefined}
+              className={`flex w-full items-center gap-2 text-left${
+                interactive ? " cursor-pointer active:opacity-70" : ""
+              }`}
+              style={{ opacity: segmentOpacity(segment.id, selectedIds) }}
+            >
               <span
                 className="h-3 w-3 shrink-0 rounded-[3px]"
                 style={{ backgroundColor: segment.color }}
@@ -124,7 +160,7 @@ export function DonutChart({
               <span className="text-[14px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
                 {formatYen(segment.value)}
               </span>
-            </div>
+            </button>
           ))
         )}
       </div>

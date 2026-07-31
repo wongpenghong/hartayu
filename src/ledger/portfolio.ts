@@ -68,15 +68,28 @@ export function latestSnapshotsByHolding(
   return latest;
 }
 
+function scopeHoldings(
+  holdings: Holding[],
+  filterAssetClassId?: string | null,
+  filterHoldingIds?: ReadonlySet<string> | null,
+): Holding[] {
+  let scoped = filterAssetClassId
+    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
+    : holdings;
+  if (filterHoldingIds != null && filterHoldingIds.size > 0) {
+    scoped = scoped.filter((holding) => filterHoldingIds.has(holding.id));
+  }
+  return scoped;
+}
+
 export function portfolioTrendPoints(
   sessions: SnapshotSession[],
   holdings: Holding[],
   snapshots: HoldingSnapshot[],
   filterAssetClassId?: string | null,
+  filterHoldingIds?: ReadonlySet<string> | null,
 ): { date: string; totalYen: number }[] {
-  const scopedHoldings = filterAssetClassId
-    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
-    : holdings;
+  const scopedHoldings = scopeHoldings(holdings, filterAssetClassId, filterHoldingIds);
   const holdingIds = new Set(scopedHoldings.map((holding) => holding.id));
   const holdingsById = new Map(holdings.map((holding) => [holding.id, holding]));
   const sortedSessions = [...sessions].sort((a, b) => compareSnapshotSessions(a, b));
@@ -133,10 +146,9 @@ export function portfolioTrendSessionPoints(
   holdings: Holding[],
   snapshots: HoldingSnapshot[],
   filterAssetClassId?: string | null,
+  filterHoldingIds?: ReadonlySet<string> | null,
 ): PortfolioTrendSessionPoint[] {
-  const scopedHoldings = filterAssetClassId
-    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
-    : holdings;
+  const scopedHoldings = scopeHoldings(holdings, filterAssetClassId, filterHoldingIds);
   const holdingIds = new Set(scopedHoldings.map((holding) => holding.id));
   const holdingsById = new Map(holdings.map((holding) => [holding.id, holding]));
   const chronological = [...sessions].sort((a, b) => -compareSnapshotSessions(a, b));
@@ -334,10 +346,9 @@ export function portfolioPnlSummary(
   sessions: SnapshotSession[],
   snapshots: HoldingSnapshot[],
   filterAssetClassId?: string | null,
+  filterHoldingIds?: ReadonlySet<string> | null,
 ): PortfolioPnlSummary | null {
-  const scopedHoldings = filterAssetClassId
-    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
-    : holdings;
+  const scopedHoldings = scopeHoldings(holdings, filterAssetClassId, filterHoldingIds);
   const latest = latestSnapshotsByHolding(sessions, snapshots);
 
   let totalCostBasisYen = 0;
@@ -375,10 +386,9 @@ export function holdingsNeedCostBasisHint(
   sessions: SnapshotSession[],
   snapshots: HoldingSnapshot[],
   filterAssetClassId?: string | null,
+  filterHoldingIds?: ReadonlySet<string> | null,
 ): boolean {
-  const scopedHoldings = filterAssetClassId
-    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
-    : holdings;
+  const scopedHoldings = scopeHoldings(holdings, filterAssetClassId, filterHoldingIds);
   const latest = latestSnapshotsByHolding(sessions, snapshots);
   const hasSnapshot = scopedHoldings.some((holding) => latest.has(holding.id));
   const hasEligible = scopedHoldings.some(

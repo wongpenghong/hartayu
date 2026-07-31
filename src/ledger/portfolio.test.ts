@@ -95,6 +95,15 @@ describe("portfolioTrendPoints", () => {
     ]);
   });
 
+  it("scopes trend to selected holdings", () => {
+    expect(
+      portfolioTrendPoints(sessions, holdings, snapshots, null, new Set(["h2"])),
+    ).toEqual([
+      { date: "2026-01-31", totalYen: 200_000 },
+      { date: "2026-02-28", totalYen: 220_000 },
+    ]);
+  });
+
   it("keeps the latest session when multiple sessions share a date", () => {
     const scopedHoldings = [
       holding({ id: "h1", assetClassId: "collectibles", quantity: 10 }),
@@ -293,6 +302,19 @@ describe("portfolioPnlSummary", () => {
       returnPct: 25,
       eligibleCount: 1,
       scopedCount: 2,
+    });
+  });
+
+  it("scopes summary to selected holdings", () => {
+    expect(
+      portfolioPnlSummary(holdings, sessions, snapshots, null, new Set(["h3"])),
+    ).toEqual({
+      totalCostBasisYen: 100_000,
+      totalValueYen: 150_000,
+      totalPnlYen: 50_000,
+      returnPct: 50,
+      eligibleCount: 1,
+      scopedCount: 1,
     });
   });
 

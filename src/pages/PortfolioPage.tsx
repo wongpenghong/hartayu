@@ -28,6 +28,14 @@ import {
   type CollectibleMarketLink,
 } from "@/household/collectible-market-links";
 import {
+  activeSelectionIds,
+  hasPortfolioSelection,
+  resolveScopedHoldingIds,
+  toggleDonutSelection,
+  toggleHoldingSelection,
+  type PortfolioSelection,
+} from "@/household/portfolio-selection";
+import {
   emptyBulkRow,
   findDuplicateInQueue,
   queueItemFromForm,
@@ -89,6 +97,7 @@ export default function PortfolioPage() {
   const [sessions, setSessions] = useState<SnapshotSession[]>([]);
   const [snapshots, setSnapshots] = useState<HoldingSnapshot[]>([]);
   const [classFilter, setClassFilter] = useState<string>("all");
+  const [selection, setSelection] = useState<PortfolioSelection>({ kind: "none" });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [holdingSheet, setHoldingSheet] = useState<HoldingSheetMode>({ kind: "closed" });
@@ -112,6 +121,7 @@ export default function PortfolioPage() {
     name: "",
     assetClassId: "",
     quantity: "",
+    costBasis: "",
     collectibleCode: "",
     snkrdunkProductId: "",
     conditionGrade: "",
@@ -144,15 +154,35 @@ export default function PortfolioPage() {
     [classFilter, holdings],
   );
 
+  const scopedHoldingIds = useMemo(
+    () => resolveScopedHoldingIds(holdings, classFilter, selection),
+    [classFilter, holdings, selection],
+  );
+
+  const scopedHoldingIdSet = useMemo(
+    () => (hasPortfolioSelection(selection) ? new Set(scopedHoldingIds) : null),
+    [scopedHoldingIds, selection],
+  );
+
   const trendPoints = useMemo(() => {
-    const filterId = classFilter === "all" ? null : classFilter;
-    return portfolioTrendSessionPoints(sessions, holdings, snapshots, filterId).map((row) => ({
+    const filterId = hasPortfolioSelection(selection)
+      ? null
+      : classFilter === "all"
+        ? null
+        : classFilter;
+    return portfolioTrendSessionPoints(
+      sessions,
+      holdings,
+      snapshots,
+      filterId,
+      scopedHoldingIdSet,
+    ).map((row) => ({
       date: row.date,
       label: row.label,
       caption: row.caption,
       value: row.value,
     }));
-  }, [classFilter, holdings, sessions, snapshots]);
+  }, [classFilter, holdings, scopedHoldingIdSet, selection, sessions, snapshots]);
 
   const donutSegments = useMemo(() => {
     const rows =
@@ -171,14 +201,28 @@ export default function PortfolioPage() {
   }, [assetClassNames, classFilter, holdings, sessions, snapshots]);
 
   const pnlSummary = useMemo(() => {
-    const filterId = classFilter === "all" ? null : classFilter;
-    return portfolioPnlSummary(holdings, sessions, snapshots, filterId);
-  }, [classFilter, holdings, sessions, snapshots]);
+    const filterId = hasPortfolioSelection(selection)
+      ? null
+      : classFilter === "all"
+        ? null
+        : classFilter;
+    return portfolioPnlSummary(holdings, sessions, snapshots, filterId, scopedHoldingIdSet);
+  }, [classFilter, holdings, scopedHoldingIdSet, selection, sessions, snapshots]);
 
   const showCostBasisHint = useMemo(() => {
-    const filterId = classFilter === "all" ? null : classFilter;
-    return holdingsNeedCostBasisHint(holdings, sessions, snapshots, filterId);
-  }, [classFilter, holdings, sessions, snapshots]);
+    const filterId = hasPortfolioSelection(selection)
+      ? null
+      : classFilter === "all"
+        ? null
+        : classFilter;
+    return holdingsNeedCostBasisHint(
+      holdings,
+      sessions,
+      snapshots,
+      filterId,
+      scopedHoldingIdSet,
+    );
+  }, [classFilter, holdings, scopedHoldingIdSet, selection, sessions, snapshots]);
 
   const collectiblesClassId = useMemo(
     () => assetClasses.find((row) => row.name === COLLECTIBLES_CLASS_NAME)?.id ?? "",
@@ -219,6 +263,10 @@ export default function PortfolioPage() {
   useEffect(() => {
     void loadPortfolio();
   }, [loadPortfolio]);
+
+  useEffect(() => {
+    setSelection({ kind: "none" });
+  }, [classFilter]);
 
   useRefreshOnFocus(loadPortfolio);
 
@@ -593,7 +641,21 @@ export default function PortfolioPage() {
         {loadError ? <ErrorNote message={loadError} /> : null}
         {refreshError ? <ErrorNote message={refreshError} /> : null}
 
-        <PillTabs value={classFilter} onChange={setClassFilter} options={filterOptions} />
+        <PillTabs
+          value={classFilter}
+          onChange={setClassFilter}
+          options={filterOptions}
+        />
+
+        {hasPortfolioSelection(selection) ? (
+          <button
+            type="button"
+            onClick={() => setSelection({ kind: "none" })}
+            className="self-start rounded-full bg-[#007aff]/10 px-3 py-1.5 text-[13px] font-semibold text-[#007aff] active:opacity-70"
+          >
+            Clear selection ({scopedHoldingIds.length})
+          </button>
+        ) : null}
 
         <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
           <p className="mb-4 text-[17px] font-semibold">Total trend</p>
@@ -615,6 +677,12 @@ export default function PortfolioPage() {
               segments={donutSegments}
               centerLabel="Portfolio"
               emptyLabel="Add holdings and snapshot values to see allocation."
+              selectedIds={
+                hasPortfolioSelection(selection) ? activeSelectionIds(selection) : undefined
+              }
+              onSegmentClick={(segmentId) =>
+                setSelection((current) => toggleDonutSelection(current, classFilter, segmentId))
+              }
             />
           )}
         </section>
@@ -663,6 +731,8 @@ export default function PortfolioPage() {
                 snapshot != null ? holdingValueYen(holding, snapshot) : null;
               const pnl = holdingPnl(holding, snapshot);
               const noQuote = holdingShowsNoQuote(link, snapshot);
+              const isSelected =
+                !hasPortfolioSelection(selection) || scopedHoldingIds.includes(holding.id);
               const quantityLabel =
                 holding.quantity != null ? ` · ${holding.quantity} units` : " · Total value";
               const costLabel =
@@ -670,34 +740,54 @@ export default function PortfolioPage() {
                   ? ` · Cost ${formatYen(holding.costBasisYen)}`
                   : "";
               return (
-                <ListRow key={holding.id} onClick={() => openEditHolding(holding)}>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[17px] font-medium">
-                      {holding.name}
-                    </span>
-                    <span className="mt-0.5 block text-[13px] text-neutral-500">
-                      {assetClassNames.get(holding.assetClassId) ?? "Class"}
-                      {quantityLabel}
-                      {costLabel}
-                      {link ? ` · ${link.collectibleCode}` : ""}
-                    </span>
-                  </span>
-                  <span className="flex flex-col items-end gap-0.5">
-                    {noQuote ? (
-                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                        No quote
+                <div
+                  key={holding.id}
+                  className={`flex w-full items-center gap-3 border-b border-[#ececee] px-4 py-3.5 last:border-b-0 dark:border-neutral-800${
+                    isSelected ? "" : " opacity-40"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelection((current) => toggleHoldingSelection(current, holding.id))
+                    }
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-70"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[17px] font-medium">
+                        {holding.name}
                       </span>
-                    ) : (
-                      <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
-                        {valueYen == null ? "—" : formatYen(valueYen)}
+                      <span className="mt-0.5 block text-[13px] text-neutral-500">
+                        {assetClassNames.get(holding.assetClassId) ?? "Class"}
+                        {quantityLabel}
+                        {costLabel}
+                        {link ? ` · ${link.collectibleCode}` : ""}
                       </span>
-                    )}
-                    {!noQuote ? (
-                      <HoldingPnlBadge pnlYen={pnl.pnlYen} returnPct={pnl.returnPct} />
-                    ) : null}
-                  </span>
-                  <span className="text-[20px] text-neutral-300">›</span>
-                </ListRow>
+                    </span>
+                    <span className="flex flex-col items-end gap-0.5">
+                      {noQuote ? (
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[12px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                          No quote
+                        </span>
+                      ) : (
+                        <span className="text-[15px] font-semibold tabular-nums text-neutral-700 dark:text-neutral-300">
+                          {valueYen == null ? "—" : formatYen(valueYen)}
+                        </span>
+                      )}
+                      {!noQuote ? (
+                        <HoldingPnlBadge pnlYen={pnl.pnlYen} returnPct={pnl.returnPct} />
+                      ) : null}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditHolding(holding)}
+                    className="shrink-0 px-1 py-2 text-[20px] text-neutral-300 active:text-neutral-500"
+                    aria-label={`Edit ${holding.name}`}
+                  >
+                    ›
+                  </button>
+                </div>
               );
             })
           )}
@@ -753,6 +843,7 @@ export default function PortfolioPage() {
         conditionGrade={bulkRow.conditionGrade}
         name={bulkRow.name}
         quantity={bulkRow.quantity}
+        costBasis={bulkRow.costBasis}
         collectibleCode={bulkRow.collectibleCode}
         snkrdunkProductId={bulkRow.snkrdunkProductId}
         queue={bulkQueue}
@@ -772,6 +863,7 @@ export default function PortfolioPage() {
         }
         onNameChange={(value) => setBulkRow((row) => ({ ...row, name: value }))}
         onQuantityChange={(value) => setBulkRow((row) => ({ ...row, quantity: value }))}
+        onCostBasisChange={(value) => setBulkRow((row) => ({ ...row, costBasis: value }))}
         onCollectibleCodeChange={(value) =>
           setBulkRow((row) => ({ ...row, collectibleCode: value }))
         }
