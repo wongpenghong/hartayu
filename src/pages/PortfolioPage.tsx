@@ -36,7 +36,7 @@ import {
   holdingsNeedCostBasisHint,
   latestSnapshotsByHolding,
   portfolioPnlSummary,
-  portfolioTrendPoints,
+  portfolioTrendSessionPoints,
 } from "@/ledger/portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "@/ledger/portfolio";
 import { formatYenCompact, parseYenInput, todayInTokyo } from "@/lib/format-yen";
@@ -90,9 +90,11 @@ export default function PortfolioPage() {
 
   const trendPoints = useMemo(() => {
     const filterId = classFilter === "all" ? null : classFilter;
-    return portfolioTrendPoints(sessions, holdings, snapshots, filterId).map((row) => ({
-      label: row.date.slice(5),
-      value: row.totalYen,
+    return portfolioTrendSessionPoints(sessions, holdings, snapshots, filterId).map((row) => ({
+      date: row.date,
+      label: row.label,
+      caption: row.caption,
+      value: row.value,
     }));
   }, [classFilter, holdings, sessions, snapshots]);
 

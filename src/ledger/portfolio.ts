@@ -79,20 +79,84 @@ export function portfolioTrendPoints(
     : holdings;
   const holdingIds = new Set(scopedHoldings.map((holding) => holding.id));
   const holdingsById = new Map(holdings.map((holding) => [holding.id, holding]));
-  const sortedSessions = [...sessions].sort((a, b) => a.asOfDate.localeCompare(b.asOfDate));
+  const sortedSessions = [...sessions].sort((a, b) => compareSnapshotSessions(a, b));
+  const byDate = new Map<string, { date: string; totalYen: number }>();
 
-  return sortedSessions.map((sessionRow) => {
-    const sessionSnapshots = snapshots.filter(
-      (row) => row.sessionId === sessionRow.id && holdingIds.has(row.holdingId),
-    );
-    const totalYen = sessionSnapshots.reduce((sum, row) => {
-      const holding = holdingsById.get(row.holdingId);
-      if (!holding) {
-        return sum;
-      }
-      return sum + holdingValueYen(holding, row);
-    }, 0);
-    return { date: sessionRow.asOfDate, totalYen };
+  for (const sessionRow of sortedSessions) {
+    if (byDate.has(sessionRow.asOfDate)) {
+      continue;
+    }
+    const totalYen = sessionTotalYen(sessionRow, holdingIds, holdingsById, snapshots);
+    byDate.set(sessionRow.asOfDate, { date: sessionRow.asOfDate, totalYen });
+  }
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export type PortfolioTrendSessionPoint = {
+  date: string;
+  label: string;
+  caption: string;
+  value: number;
+};
+
+function sessionTotalYen(
+  sessionRow: SnapshotSession,
+  holdingIds: Set<string>,
+  holdingsById: Map<string, Holding>,
+  snapshots: HoldingSnapshot[],
+): number {
+  const sessionSnapshots = snapshots.filter(
+    (row) => row.sessionId === sessionRow.id && holdingIds.has(row.holdingId),
+  );
+  return sessionSnapshots.reduce((sum, row) => {
+    const holding = holdingsById.get(row.holdingId);
+    if (!holding) {
+      return sum;
+    }
+    return sum + holdingValueYen(holding, row);
+  }, 0);
+}
+
+function sessionTimeLabel(createdAt: string, withSeconds = false): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    ...(withSeconds ? { second: "2-digit" } : {}),
+    hour12: false,
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(createdAt));
+}
+
+export function portfolioTrendSessionPoints(
+  sessions: SnapshotSession[],
+  holdings: Holding[],
+  snapshots: HoldingSnapshot[],
+  filterAssetClassId?: string | null,
+): PortfolioTrendSessionPoint[] {
+  const scopedHoldings = filterAssetClassId
+    ? holdings.filter((holding) => holding.assetClassId === filterAssetClassId)
+    : holdings;
+  const holdingIds = new Set(scopedHoldings.map((holding) => holding.id));
+  const holdingsById = new Map(holdings.map((holding) => [holding.id, holding]));
+  const chronological = [...sessions].sort((a, b) => -compareSnapshotSessions(a, b));
+  const dateCounts = new Map<string, number>();
+  for (const sessionRow of chronological) {
+    dateCounts.set(sessionRow.asOfDate, (dateCounts.get(sessionRow.asOfDate) ?? 0) + 1);
+  }
+
+  return chronological.map((sessionRow) => {
+    const [, month, day] = sessionRow.asOfDate.split("-");
+    const sameDayCount = dateCounts.get(sessionRow.asOfDate) ?? 1;
+    const useTime = sameDayCount > 1;
+    const timeLabel = sessionTimeLabel(sessionRow.createdAt, useTime);
+    const label = useTime ? timeLabel : `${month}-${day}`;
+    return {
+      date: sessionRow.asOfDate,
+      label,
+      caption: useTime ? `${month}/${day} ${timeLabel}` : "",
+      value: sessionTotalYen(sessionRow, holdingIds, holdingsById, snapshots),
+    };
   });
 }
 

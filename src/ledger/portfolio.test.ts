@@ -10,6 +10,7 @@ import {
   latestSnapshotsByHolding,
   portfolioPnlSummary,
   portfolioTrendPoints,
+  portfolioTrendSessionPoints,
 } from "./portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "./portfolio";
 
@@ -89,6 +90,53 @@ describe("portfolioTrendPoints", () => {
     ).toEqual([
       { date: "2026-01-31", totalYen: 100_000 },
       { date: "2026-02-28", totalYen: 120_000 },
+    ]);
+  });
+
+  it("keeps the latest session when multiple sessions share a date", () => {
+    const scopedHoldings = [
+      holding({ id: "h1", assetClassId: "collectibles", quantity: 10 }),
+    ];
+    const sameDaySessions = [
+      session("s1", "2026-07-31", "2026-07-31T08:00:00Z"),
+      session("s2", "2026-07-31", "2026-07-31T12:00:00Z"),
+    ];
+    const sameDaySnapshots = [
+      snapshot({ holdingId: "h1", sessionId: "s1", unitPriceYen: 44_000 }),
+      snapshot({ holdingId: "h1", sessionId: "s2", unitPriceYen: 48_000 }),
+    ];
+
+    expect(portfolioTrendPoints(sameDaySessions, scopedHoldings, sameDaySnapshots)).toEqual([
+      { date: "2026-07-31", totalYen: 480_000 },
+    ]);
+  });
+
+  it("returns every snapshot session for the detail chart", () => {
+    const scopedHoldings = [
+      holding({ id: "h1", assetClassId: "collectibles", quantity: 10 }),
+    ];
+    const sameDaySessions = [
+      session("s1", "2026-07-31", "2026-07-31T08:00:00Z"),
+      session("s2", "2026-07-31", "2026-07-31T12:00:00Z"),
+    ];
+    const sameDaySnapshots = [
+      snapshot({ holdingId: "h1", sessionId: "s1", unitPriceYen: 44_000 }),
+      snapshot({ holdingId: "h1", sessionId: "s2", unitPriceYen: 48_000 }),
+    ];
+
+    expect(portfolioTrendSessionPoints(sameDaySessions, scopedHoldings, sameDaySnapshots)).toEqual([
+      {
+        date: "2026-07-31",
+        label: "17:00:00",
+        caption: "07/31 17:00:00",
+        value: 440_000,
+      },
+      {
+        date: "2026-07-31",
+        label: "21:00:00",
+        caption: "07/31 21:00:00",
+        value: 480_000,
+      },
     ]);
   });
 });

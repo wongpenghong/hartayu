@@ -52,5 +52,25 @@ One tracked investment position — name, asset class, quantity (optional for to
 _Avoid_: Entry, pocket
 
 **Value snapshot**:
-A dated mark-to-market for holdings. Batch sessions: one as-of date, update all holdings; skipped lines carry forward last price. Supports unit price × quantity or total value shortcut. No external price API.
+A dated mark-to-market for holdings. Batch sessions: one as-of date, update all holdings; skipped lines carry forward last price. Supports unit price × quantity or total value shortcut. Collectibles may auto-fill from a **market quote**; other holdings stay manual.
 _Avoid_: Entry, balance (pocket)
+
+**Collectible code**:
+Catalog identifier printed on a trading card (e.g. `P-159`). Used to label a Collectibles holding; paired with a market link for price lookup.
+_Avoid_: SKU, product ID (implementation term)
+
+**Condition grade**:
+The physical or grading state used to pick a market price (raw A–D, or PSA9/PSA10). Set per Collectibles holding with a market link.
+_Avoid_: Rank, quality
+
+**Market link**:
+Optional connection between a Collectibles holding and an external resale market (v1: SNKRDUNK). Stores collectible code, market product reference, and condition grade.
+_Avoid_: Ticker, symbol
+
+**Market quote**:
+The minimum listing price fetched for a market link at its condition grade on a given refresh.
+_Avoid_: NAV, appraisal
+
+**No quote**:
+The market has no listing at the chosen condition grade. The holding is excluded from that auto snapshot total until the user enters a manual value.
+_Avoid_: N/A, zero
