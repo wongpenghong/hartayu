@@ -637,3 +637,28 @@ export function LimitProgressBar({
     </div>
   );
 }
+
+export function CheckboxField({
+  checked,
+  onChange,
+  label,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-[14px] text-neutral-600 dark:text-neutral-400">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 rounded border-neutral-300"
+      />
+      {label}
+    </label>
+  );
+}

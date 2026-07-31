@@ -36,6 +36,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      asset_classes: {
+        Row: {
+          household_id: string;
+          id: string;
+          is_starter: boolean;
+          name: string;
+        };
+        Insert: {
+          household_id: string;
+          id?: string;
+          is_starter?: boolean;
+          name: string;
+        };
+        Update: {
+          household_id?: string;
+          id?: string;
+          is_starter?: boolean;
+          name?: string;
+        };
+        Relationships: [];
+      };
       categories: {
         Row: {
           emoji: string | null;
@@ -180,6 +201,63 @@ export type Database = {
         };
         Relationships: [];
       };
+      holding_snapshots: {
+        Row: {
+          carried_forward: boolean;
+          holding_id: string;
+          id: string;
+          session_id: string;
+          total_value_yen: number | null;
+          unit_price_yen: number | null;
+        };
+        Insert: {
+          carried_forward?: boolean;
+          holding_id: string;
+          id?: string;
+          session_id: string;
+          total_value_yen?: number | null;
+          unit_price_yen?: number | null;
+        };
+        Update: {
+          carried_forward?: boolean;
+          holding_id?: string;
+          id?: string;
+          session_id?: string;
+          total_value_yen?: number | null;
+          unit_price_yen?: number | null;
+        };
+        Relationships: [];
+      };
+      holdings: {
+        Row: {
+          asset_class_id: string;
+          cost_basis_yen: number | null;
+          created_at: string;
+          household_id: string;
+          id: string;
+          name: string;
+          quantity: number | null;
+        };
+        Insert: {
+          asset_class_id: string;
+          cost_basis_yen?: number | null;
+          created_at?: string;
+          household_id: string;
+          id?: string;
+          name: string;
+          quantity?: number | null;
+        };
+        Update: {
+          asset_class_id?: string;
+          cost_basis_yen?: number | null;
+          created_at?: string;
+          household_id?: string;
+          id?: string;
+          name?: string;
+          quantity?: number | null;
+        };
+        Relationships: [];
+      };
       household_invites: {
         Row: {
           accepted_at: string | null;
@@ -240,6 +318,27 @@ export type Database = {
           created_at?: string;
           id?: string;
           name?: string;
+        };
+        Relationships: [];
+      };
+      snapshot_sessions: {
+        Row: {
+          as_of_date: string;
+          created_at: string;
+          household_id: string;
+          id: string;
+        };
+        Insert: {
+          as_of_date: string;
+          created_at?: string;
+          household_id: string;
+          id?: string;
+        };
+        Update: {
+          as_of_date?: string;
+          created_at?: string;
+          household_id?: string;
+          id?: string;
         };
         Relationships: [];
       };

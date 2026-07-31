@@ -40,6 +40,24 @@ export default function MorePage() {
             <span className="min-w-0 flex-1 text-[17px] font-medium">Payment limits</span>
             <span className="text-[20px] text-neutral-300">›</span>
           </ListRow>
+          <ListRow onClick={() => navigate("/portfolio")}>
+            <HubIcon>
+              <path
+                d="M4 18V8l8-4 8 4v10"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M9 18V11h6v7"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+            </HubIcon>
+            <span className="min-w-0 flex-1 text-[17px] font-medium">Portfolio</span>
+            <span className="text-[20px] text-neutral-300">›</span>
+          </ListRow>
         </GroupCard>
       </main>
     </>

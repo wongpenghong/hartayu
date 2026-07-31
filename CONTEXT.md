@@ -42,3 +42,15 @@ _Avoid_: Yen (use JPY in data; 円 is fine in UI copy)
 **Net**:
 Income minus expense for a period (v0 home shows net for the current calendar month in JST).
 _Avoid_: Profit, surplus
+
+**Asset class**:
+A label grouping portfolio holdings for allocation (e.g. Stocks, Collectibles, Private). Household-scoped; CRUD in Settings. Default starters: Stocks, Collectibles, Private.
+_Avoid_: Category (cash-flow), pocket
+
+**Holding**:
+One tracked investment position — name, asset class, quantity (optional for total-value-only items), optional cost basis. Value comes from snapshots, not the cash-flow ledger.
+_Avoid_: Entry, pocket
+
+**Value snapshot**:
+A dated mark-to-market for holdings. Batch sessions: one as-of date, update all holdings; skipped lines carry forward last price. Supports unit price × quantity or total value shortcut. No external price API.
+_Avoid_: Entry, balance (pocket)

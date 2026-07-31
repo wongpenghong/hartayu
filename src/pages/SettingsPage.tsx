@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { AssetClassesPanel } from "@/components/AssetClassesPanel";
 import { GoalsPanel } from "@/components/GoalsPanel";
+import { fetchAssetClasses, type AssetClass } from "@/household/asset-classes";
 import {
   createCategory,
   fetchCategories,
@@ -480,9 +482,12 @@ export default function SettingsPage() {
       ? "categories"
       : tabParam === "goals"
         ? "goals"
-        : "pockets";
+        : tabParam === "asset-classes"
+          ? "asset-classes"
+          : "pockets";
   const [pockets, setPockets] = useState<Pocket[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [assetClasses, setAssetClasses] = useState<AssetClass[]>([]);
   const [goals, setGoals] = useState<Awaited<ReturnType<typeof fetchGoals>>>([]);
   const [contributions, setContributions] = useState<
     Awaited<ReturnType<typeof fetchGoalContributions>>
@@ -495,16 +500,24 @@ export default function SettingsPage() {
     setLoading(true);
     setPageError(null);
     try {
-      const [nextPockets, nextCategories, nextMembers, nextGoals, nextContributions] =
-        await Promise.all([
-          fetchPockets(),
-          fetchCategories(),
-          fetchHouseholdMembers(),
-          fetchGoals(),
-          fetchGoalContributions(),
-        ]);
+      const [
+        nextPockets,
+        nextCategories,
+        nextMembers,
+        nextGoals,
+        nextContributions,
+        nextAssetClasses,
+      ] = await Promise.all([
+        fetchPockets(),
+        fetchCategories(),
+        fetchHouseholdMembers(),
+        fetchGoals(),
+        fetchGoalContributions(),
+        fetchAssetClasses(),
+      ]);
       setPockets(nextPockets);
       setCategories(nextCategories);
+      setAssetClasses(nextAssetClasses);
       setMembers(nextMembers);
       setGoals(nextGoals);
       setContributions(nextContributions);
@@ -557,6 +570,12 @@ export default function SettingsPage() {
           categories={categories}
           loading={loading}
           onChange={setCategories}
+        />
+      ) : tab === "asset-classes" ? (
+        <AssetClassesPanel
+          assetClasses={assetClasses}
+          loading={loading}
+          onChange={setAssetClasses}
         />
       ) : (
         <GoalsPanel

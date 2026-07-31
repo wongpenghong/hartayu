@@ -7,6 +7,7 @@ import EntriesPage from "@/pages/EntriesPage";
 import HomePage from "@/pages/HomePage";
 import LimitsPage from "@/pages/LimitsPage";
 import MorePage from "@/pages/MorePage";
+import PortfolioPage from "@/pages/PortfolioPage";
 import SettingsPage from "@/pages/SettingsPage";
 import SignInPage from "@/pages/SignInPage";
 
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/entries" element={<EntriesPage />} />
             <Route path="/limits" element={<LimitsPage />} />
             <Route path="/more" element={<MorePage />} />
+            <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
