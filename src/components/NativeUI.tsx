@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
+import { forwardRef } from "react";
+import { Link } from "react-router-dom";
 
 export function NativeScaffold({ children }: { children: ReactNode }) {
   return (
@@ -93,6 +95,26 @@ export function ListRow({
   }
 
   return <div className={className}>{children}</div>;
+}
+
+export function PageBackLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="-ml-1 mb-1 inline-flex items-center gap-0.5 py-1 text-[17px] leading-none text-[#007aff] active:opacity-60"
+    >
+      <svg width="12" height="20" viewBox="0 0 12 20" fill="none" aria-hidden>
+        <path
+          d="M10 2 2 10l8 8"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {label}
+    </Link>
+  );
 }
 
 export function SheetOverlay({
@@ -198,19 +220,50 @@ export function TextField({
   );
 }
 
-export function YenAmountField({
-  value,
-  onChange,
-  onBlur,
+export function CategoryChip({
+  label,
+  selected,
+  onClick,
   disabled,
 }: {
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: () => void;
+  label: string;
+  selected?: boolean;
+  onClick?: () => void;
   disabled?: boolean;
 }) {
   return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`rounded-full px-3.5 py-2 text-[15px] font-medium transition disabled:opacity-50 ${
+        selected
+          ? "bg-[#007aff] text-white"
+          : "bg-[#f2f2f7] text-neutral-900 active:bg-[#e5e5ea] dark:bg-neutral-800 dark:text-neutral-100 dark:active:bg-neutral-700"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+export const YenAmountField = forwardRef(function YenAmountField(
+  {
+    value,
+    onChange,
+    onBlur,
+    disabled,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    onBlur?: () => void;
+    disabled?: boolean;
+  },
+  ref: Ref<HTMLInputElement>,
+) {
+  return (
     <input
+      ref={ref}
       className={`${inputClassName} text-[28px] font-semibold tabular-nums`}
       inputMode="numeric"
       autoComplete="off"
@@ -221,7 +274,7 @@ export function YenAmountField({
       disabled={disabled}
     />
   );
-}
+});
 
 export function IdrAmountField({
   value,

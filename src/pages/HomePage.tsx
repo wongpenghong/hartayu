@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
 import { RecentTransactions } from "@/components/RecentTransactions";
+import { RemainingBudgetSummary } from "@/components/RemainingBudgetSummary";
 import {
   SpendingTrendCard,
   type SpendingPeriod,
@@ -18,6 +19,7 @@ import {
   expenseTotalForDateRange,
   monthlyTotals,
   recentEntries,
+  remainingBudgetByCategory,
   trendPercent,
 } from "@/ledger/ledger";
 import { ErrorNote } from "@/components/NativeUI";
@@ -57,6 +59,10 @@ export default function HomePage() {
   );
   const pocketsById = useMemo(() => pocketNameById(pockets), [pockets]);
   const recent = useMemo(() => recentEntries(entries, 5), [entries]);
+  const budgetRows = useMemo(
+    () => remainingBudgetByCategory(entries, categories, month.year, month.month, 5),
+    [categories, entries, month.month, month.year],
+  );
 
   const spending = useMemo(() => {
     if (spendingPeriod === "daily") {
@@ -178,6 +184,12 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        <RemainingBudgetSummary
+          rows={budgetRows}
+          categoryNameById={categoriesById}
+          loading={loading}
+        />
 
         <RecentTransactions
           entries={recent}

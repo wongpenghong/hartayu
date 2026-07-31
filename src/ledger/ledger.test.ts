@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   balanceForPocket,
   balancesByPocket,
+  budgetPace,
   expenseTotalForDate,
   expenseTotalForDateRange,
   expenseTotalsByCategory,
@@ -9,10 +10,13 @@ import {
   expenseTotalsByPocket,
   expenseTotalsByRecentMonths,
   filterEntries,
+  groupEntriesByDay,
   householdBalance,
   monthlyTotals,
   monthlyTotalsByCategory,
+  recentCategoryIds,
   recentEntries,
+  remainingBudgetByCategory,
   trendPercent,
 } from "./ledger";
 import type { Entry, Pocket } from "./types";
@@ -377,5 +381,157 @@ describe("ledger", () => {
     ];
 
     expect(recentEntries(entries, 2).map((row) => row.id)).toEqual(["3", "2"]);
+  });
+
+  it("returns recent category ids by newest use", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 100,
+        entryDate: "2026-07-01",
+        createdAt: "2026-07-01T10:00:00Z",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        categoryId: "cat-transport",
+        kind: "expense",
+        amountYen: 200,
+        entryDate: "2026-07-02",
+        createdAt: "2026-07-02T10:00:00Z",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 300,
+        entryDate: "2026-07-03",
+        createdAt: "2026-07-03T10:00:00Z",
+      }),
+      entry({
+        id: "4",
+        pocketId: "pocket-a",
+        categoryId: "cat-salary",
+        kind: "income",
+        amountYen: 400_000,
+        entryDate: "2026-07-04",
+        createdAt: "2026-07-04T10:00:00Z",
+      }),
+    ];
+
+    expect(recentCategoryIds(entries, "expense", 5)).toEqual([
+      "cat-food",
+      "cat-transport",
+    ]);
+    expect(recentCategoryIds(entries, "income", 5)).toEqual(["cat-salary"]);
+  });
+
+  it("groups entries by day newest first", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 100,
+        entryDate: "2026-07-01",
+        createdAt: "2026-07-01T10:00:00Z",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 200,
+        entryDate: "2026-07-02",
+        createdAt: "2026-07-02T10:00:00Z",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 300,
+        entryDate: "2026-07-02",
+        createdAt: "2026-07-02T12:00:00Z",
+      }),
+    ];
+
+    expect(groupEntriesByDay(entries)).toEqual([
+      { date: "2026-07-02", entries: [entries[2], entries[1]] },
+      { date: "2026-07-01", entries: [entries[0]] },
+    ]);
+  });
+
+  it("computes budget pace and remaining budget rows", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        categoryId: "cat-food",
+        kind: "expense",
+        amountYen: 15_000,
+        entryDate: "2026-07-15",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        categoryId: "cat-rent",
+        kind: "expense",
+        amountYen: 80_000,
+        entryDate: "2026-07-10",
+      }),
+    ];
+
+    expect(budgetPace(15_000, 30_000, 2026, 7, "2026-07-15")).toEqual({
+      daysInMonth: 31,
+      daysElapsed: 15,
+      daysLeft: 17,
+      spentYen: 15_000,
+      limitYen: 30_000,
+      remainingYen: 15_000,
+      projectedSpendYen: 31_000,
+      dailyAllowanceYen: 882,
+    });
+
+    expect(
+      remainingBudgetByCategory(
+        entries,
+        [
+          {
+            id: "cat-food",
+            kind: "expense",
+            monthly_limit_yen: 30_000,
+          },
+          {
+            id: "cat-rent",
+            kind: "expense",
+            monthly_limit_yen: 100_000,
+          },
+          {
+            id: "cat-salary",
+            kind: "income",
+            monthly_limit_yen: null,
+          },
+        ],
+        2026,
+        7,
+        2,
+      ),
+    ).toEqual([
+      {
+        categoryId: "cat-rent",
+        spentYen: 80_000,
+        limitYen: 100_000,
+        remainingYen: 20_000,
+      },
+      {
+        categoryId: "cat-food",
+        spentYen: 15_000,
+        limitYen: 30_000,
+        remainingYen: 15_000,
+      },
+    ]);
   });
 });

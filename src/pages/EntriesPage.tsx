@@ -103,6 +103,7 @@ export default function EntriesPage() {
               categoryNameById={categoriesById}
               pocketNameById={pocketsById}
               currentUserId={user?.id}
+              groupByDay
               onEditEntry={(entry) => {
                 if (entry.memberId === user?.id) {
                   openEditEntry(entry);

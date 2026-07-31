@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category } from "@/household/categories";
 import {
   categoriesForKind,
@@ -13,6 +13,7 @@ import {
 import type { Pocket } from "@/household/pockets";
 import { activePockets, defaultPocketId } from "@/household/pocket-utils";
 import type { Entry, EntryKind } from "@/ledger/types";
+import { recentCategoryIds } from "@/ledger/ledger";
 import {
   formatYenInput,
   parseYenInput,
@@ -23,6 +24,7 @@ import {
   parseIdrInput,
 } from "@/lib/format-idr";
 import {
+  CategoryChip,
   DateField,
   ErrorNote,
   Field,
@@ -45,6 +47,7 @@ type EntrySheetProps = {
   entry: Entry | null;
   pockets: Pocket[];
   categories: Category[];
+  entries: Entry[];
 };
 
 export function EntrySheet({
@@ -57,8 +60,10 @@ export function EntrySheet({
   entry,
   pockets,
   categories,
+  entries,
 }: EntrySheetProps) {
   const editing = entry != null;
+  const amountRef = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState<EntryKind>("expense");
   const [amountInput, setAmountInput] = useState("");
   const [foreignAmountInput, setForeignAmountInput] = useState("");
@@ -74,6 +79,14 @@ export function EntrySheet({
     () => categoriesForKind(categories, kind),
     [categories, kind],
   );
+  const recentCategories = useMemo(() => {
+    const recentIds = recentCategoryIds(entries, kind, 5);
+    const byId = new Map(visibleCategories.map((category) => [category.id, category]));
+
+    return recentIds
+      .map((id) => byId.get(id))
+      .filter((category): category is Category => category != null);
+  }, [entries, kind, visibleCategories]);
 
   useEffect(() => {
     if (!open) {
@@ -110,6 +123,13 @@ export function EntrySheet({
     const nextCategories = categoriesForKind(categories, nextKind);
     if (!nextCategories.some((category) => category.id === categoryId)) {
       setCategoryId(nextCategories[0]?.id ?? "");
+    }
+  }
+
+  function selectCategory(nextCategoryId: string, focusAmount = false) {
+    setCategoryId(nextCategoryId);
+    if (focusAmount) {
+      requestAnimationFrame(() => amountRef.current?.focus());
     }
   }
 
@@ -214,8 +234,40 @@ export function EntrySheet({
         ]}
       />
 
+      <Field label="Category">
+        {!editing && recentCategories.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {recentCategories.map((category) => (
+              <CategoryChip
+                key={category.id}
+                label={category.name}
+                selected={categoryId === category.id}
+                disabled={busy}
+                onClick={() => selectCategory(category.id, true)}
+              />
+            ))}
+          </div>
+        ) : null}
+        <SelectField
+          value={categoryId}
+          onChange={(value) => selectCategory(value)}
+          disabled={busy}
+        >
+          {visibleCategories.length === 0 ? (
+            <option value="">No categories for this type</option>
+          ) : (
+            visibleCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))
+          )}
+        </SelectField>
+      </Field>
+
       <Field label="Amount">
         <YenAmountField
+          ref={amountRef}
           value={amountInput}
           onChange={(value) => setAmountInput(value.replace(/[^\d¥,\s]/g, ""))}
           onBlur={() => {
@@ -251,24 +303,6 @@ export function EntrySheet({
             visiblePockets.map((pocket) => (
               <option key={pocket.id} value={pocket.id}>
                 {pocket.name}
-              </option>
-            ))
-          )}
-        </SelectField>
-      </Field>
-
-      <Field label="Category">
-        <SelectField
-          value={categoryId}
-          onChange={setCategoryId}
-          disabled={busy}
-        >
-          {visibleCategories.length === 0 ? (
-            <option value="">No categories for this type</option>
-          ) : (
-            visibleCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
               </option>
             ))
           )}

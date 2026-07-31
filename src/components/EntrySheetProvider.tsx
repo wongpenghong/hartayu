@@ -25,12 +25,16 @@ export function EntrySheetProvider({
   userId,
   pockets,
   categories,
+  entries,
+  onEntriesChanged,
   children,
 }: {
   householdId: string;
   userId: string;
   pockets: Pocket[];
   categories: Category[];
+  entries: Entry[];
+  onEntriesChanged?: () => void | Promise<void>;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -39,7 +43,8 @@ export function EntrySheetProvider({
 
   const notifyEntryChanged = useCallback(() => {
     listeners.forEach((listener) => listener());
-  }, [listeners]);
+    void onEntriesChanged?.();
+  }, [listeners, onEntriesChanged]);
 
   const registerEntryChangeListener = useCallback((listener: () => void) => {
     setListeners((current) => new Set(current).add(listener));
@@ -90,6 +95,7 @@ export function EntrySheetProvider({
         entry={entry}
         pockets={pockets}
         categories={categories}
+        entries={entries}
       />
     </EntrySheetContext.Provider>
   );

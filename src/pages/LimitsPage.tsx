@@ -12,13 +12,19 @@ import {
   Field,
   GroupCard,
   LimitProgressBar,
+  PageBackLink,
   PrimaryAction,
   SheetOverlay,
   TextField,
 } from "@/components/NativeUI";
 import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
-import { expenseTotalsByCategory } from "@/ledger/ledger";
-import { currentMonthInTokyo, formatYen, parseYenInput } from "@/lib/format-yen";
+import { budgetPace, expenseTotalsByCategory } from "@/ledger/ledger";
+import {
+  currentMonthInTokyo,
+  formatYen,
+  parseYenInput,
+  todayInTokyo,
+} from "@/lib/format-yen";
 
 type LimitRow = {
   category: Category;
@@ -55,6 +61,22 @@ export default function LimitsPage() {
       .filter((row) => row.category.monthly_limit_yen != null)
       .sort((left, right) => right.spentYen - left.spentYen);
   }, [categories, entries, month.month, month.year]);
+
+  const today = useMemo(() => todayInTokyo(), []);
+
+  const householdPace = useMemo(() => {
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const limitYen = rows.reduce(
+      (total, row) => total + (row.category.monthly_limit_yen ?? 0),
+      0,
+    );
+    const spentYen = rows.reduce((total, row) => total + row.spentYen, 0);
+
+    return budgetPace(spentYen, limitYen, month.year, month.month, today);
+  }, [month.month, month.year, rows, today]);
 
   const loadLimits = useCallback(async () => {
     setLoading(true);
@@ -136,6 +158,7 @@ export default function LimitsPage() {
   return (
     <>
       <header className="px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <PageBackLink to="/more" label="More" />
         <h1 className="text-[34px] font-bold leading-tight tracking-tight">
           Payment limits
         </h1>
@@ -144,6 +167,18 @@ export default function LimitsPage() {
 
       <main className="flex flex-1 flex-col gap-4 px-4 pb-28">
         {loadError ? <ErrorNote message={loadError} /> : null}
+
+        {householdPace ? (
+          <GroupCard title="Household pace">
+            <div className="px-4 py-4 text-[15px] text-neutral-600 dark:text-neutral-300">
+              <p>
+                {householdPace.daysLeft} days left · projecting{" "}
+                {formatYen(householdPace.projectedSpendYen)} ·{" "}
+                {formatYen(householdPace.dailyAllowanceYen)}/day available
+              </p>
+            </div>
+          </GroupCard>
+        ) : null}
 
         <GroupCard title="Active limits">
           {loading ? (
@@ -154,6 +189,13 @@ export default function LimitsPage() {
             rows.map(({ category, spentYen }) => {
               const limitYen = category.monthly_limit_yen ?? 0;
               const over = spentYen > limitYen;
+              const pace = budgetPace(
+                spentYen,
+                limitYen,
+                month.year,
+                month.month,
+                today,
+              );
 
               return (
                 <button
@@ -175,6 +217,11 @@ export default function LimitsPage() {
                   <div className="mt-3">
                     <LimitProgressBar spentYen={spentYen} limitYen={limitYen} />
                   </div>
+                  <p className="mt-2 text-[13px] text-neutral-500">
+                    {pace.daysLeft} days left · projecting{" "}
+                    {formatYen(pace.projectedSpendYen)} ·{" "}
+                    {formatYen(pace.dailyAllowanceYen)}/day available
+                  </p>
                 </button>
               );
             })

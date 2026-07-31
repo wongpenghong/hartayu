@@ -1,12 +1,15 @@
 import type {
+  BudgetPace,
   CategoryMonthlyTotal,
   Entry,
+  EntryDayGroup,
   EntryFilter,
   EntryKind,
   MonthSegmentTotal,
   MonthlyTotals,
   Pocket,
   PocketBalance,
+  RemainingBudgetRow,
   SegmentTotal,
 } from "./types";
 import { shiftMonth } from "@/lib/format-yen";
@@ -291,14 +294,126 @@ export function totalsByRecentMonths(
   return results;
 }
 
-export function recentEntries(entries: Entry[], limit: number): Entry[] {
-  return [...entries]
-    .sort((left, right) => {
-      if (left.entryDate !== right.entryDate) {
-        return right.entryDate.localeCompare(left.entryDate);
-      }
+export function sortEntriesNewestFirst(entries: Entry[]): Entry[] {
+  return [...entries].sort((left, right) => {
+    if (left.entryDate !== right.entryDate) {
+      return right.entryDate.localeCompare(left.entryDate);
+    }
 
-      return right.createdAt.localeCompare(left.createdAt);
+    return right.createdAt.localeCompare(left.createdAt);
+  });
+}
+
+export function recentEntries(entries: Entry[], limit: number): Entry[] {
+  return sortEntriesNewestFirst(entries).slice(0, limit);
+}
+
+export function recentCategoryIds(
+  entries: Entry[],
+  kind: EntryKind,
+  limit = 5,
+): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const entry of sortEntriesNewestFirst(entries)) {
+    if (entry.kind !== kind || seen.has(entry.categoryId)) {
+      continue;
+    }
+
+    seen.add(entry.categoryId);
+    result.push(entry.categoryId);
+    if (result.length >= limit) {
+      break;
+    }
+  }
+
+  return result;
+}
+
+export function groupEntriesByDay(entries: Entry[]): EntryDayGroup[] {
+  const groups: EntryDayGroup[] = [];
+
+  for (const entry of sortEntriesNewestFirst(entries)) {
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup?.date === entry.entryDate) {
+      lastGroup.entries.push(entry);
+      continue;
+    }
+
+    groups.push({ date: entry.entryDate, entries: [entry] });
+  }
+
+  return groups;
+}
+
+export function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+export function budgetPace(
+  spentYen: number,
+  limitYen: number,
+  year: number,
+  month: number,
+  today: string,
+): BudgetPace {
+  const [todayYear, todayMonth, todayDay] = today.split("-").map(Number);
+  const inMonth = todayYear === year && todayMonth === month;
+  const totalDays = daysInMonth(year, month);
+  const daysElapsed = inMonth ? todayDay : totalDays;
+  const daysLeft = inMonth ? Math.max(totalDays - todayDay + 1, 0) : 0;
+  const remainingYen = limitYen - spentYen;
+  const projectedSpendYen =
+    daysElapsed > 0 ? Math.round((spentYen / daysElapsed) * totalDays) : spentYen;
+  const dailyAllowanceYen =
+    daysLeft > 0 ? Math.floor(remainingYen / daysLeft) : remainingYen;
+
+  return {
+    daysInMonth: totalDays,
+    daysElapsed,
+    daysLeft,
+    spentYen,
+    limitYen,
+    remainingYen,
+    projectedSpendYen,
+    dailyAllowanceYen,
+  };
+}
+
+export function remainingBudgetByCategory(
+  entries: Entry[],
+  categories: readonly {
+    id: string;
+    kind: EntryKind;
+    monthly_limit_yen: number | null;
+  }[],
+  year: number,
+  month: number,
+  limit = 5,
+): RemainingBudgetRow[] {
+  const spentByCategory = new Map(
+    expenseTotalsByCategory(entries, year, month).map((row) => [
+      row.id,
+      row.totalYen,
+    ]),
+  );
+
+  return categories
+    .filter(
+      (category) =>
+        category.kind === "expense" && category.monthly_limit_yen != null,
+    )
+    .map((category) => {
+      const spentYen = spentByCategory.get(category.id) ?? 0;
+      const limitYen = category.monthly_limit_yen ?? 0;
+      return {
+        categoryId: category.id,
+        spentYen,
+        limitYen,
+        remainingYen: limitYen - spentYen,
+      };
     })
+    .sort((left, right) => right.spentYen - left.spentYen)
     .slice(0, limit);
 }

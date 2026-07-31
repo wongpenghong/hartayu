@@ -51,3 +51,26 @@ export type EntryFilter = {
   year?: number;
   month?: number;
 };
+
+export type EntryDayGroup = {
+  date: string;
+  entries: Entry[];
+};
+
+export type BudgetPace = {
+  daysInMonth: number;
+  daysElapsed: number;
+  daysLeft: number;
+  spentYen: number;
+  limitYen: number;
+  remainingYen: number;
+  projectedSpendYen: number;
+  dailyAllowanceYen: number;
+};
+
+export type RemainingBudgetRow = {
+  categoryId: string;
+  spentYen: number;
+  limitYen: number;
+  remainingYen: number;
+};
