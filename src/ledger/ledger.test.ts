@@ -41,6 +41,7 @@ function entry(
     attributedMemberId: "member-a",
     billId: null,
     foreignAmountIdr: null,
+    exchangeRateIdrToJpy: null,
     note: null,
     createdAt: "2026-07-01T00:00:00Z",
     ...overrides,

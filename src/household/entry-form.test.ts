@@ -75,6 +75,7 @@ describe("validateEntryDraft", () => {
     kind: "expense" as const,
     amountYen: 1500,
     foreignAmountIdr: null,
+    exchangeRateIdrToJpy: null,
     pocketId: "pocket-a",
     categoryId: "cat-a",
     entryDate: "2026-07-17",
@@ -88,6 +89,17 @@ describe("validateEntryDraft", () => {
   it("accepts JPY with optional IDR", () => {
     expect(
       validateEntryDraft({ ...validDraft, foreignAmountIdr: 35_000_000 }),
+    ).toBeNull();
+  });
+
+  it("accepts IDR with exchange rate and no typed yen", () => {
+    expect(
+      validateEntryDraft({
+        ...validDraft,
+        amountYen: null,
+        foreignAmountIdr: 150_000,
+        exchangeRateIdrToJpy: 0.0095,
+      }),
     ).toBeNull();
   });
 
@@ -115,14 +127,24 @@ describe("validateEntryDraft", () => {
     ).toMatch(/idr/i);
   });
 
-  it("rejects missing JPY even when IDR is present", () => {
+  it("rejects IDR without rate or yen", () => {
     expect(
       validateEntryDraft({
         ...validDraft,
         amountYen: null,
         foreignAmountIdr: 150_000,
       }),
-    ).toMatch(/amount/i);
+    ).toMatch(/exchange rate/i);
+  });
+
+  it("rejects rate without IDR or yen", () => {
+    expect(
+      validateEntryDraft({
+        ...validDraft,
+        amountYen: null,
+        exchangeRateIdrToJpy: 0.0095,
+      }),
+    ).toMatch(/foreign amount/i);
   });
 });
 

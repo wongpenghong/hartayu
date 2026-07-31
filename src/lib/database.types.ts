@@ -131,6 +131,7 @@ export type Database = {
       };
       categories: {
         Row: {
+          budget_group: "needs" | "wants" | "savings" | null;
           emoji: string | null;
           household_id: string;
           id: string;
@@ -140,6 +141,7 @@ export type Database = {
           name: string;
         };
         Insert: {
+          budget_group?: "needs" | "wants" | "savings" | null;
           emoji?: string | null;
           household_id: string;
           id?: string;
@@ -149,6 +151,7 @@ export type Database = {
           name: string;
         };
         Update: {
+          budget_group?: "needs" | "wants" | "savings" | null;
           emoji?: string | null;
           household_id?: string;
           id?: string;
@@ -167,6 +170,7 @@ export type Database = {
           category_id: string | null;
           created_at: string;
           entry_date: string;
+          exchange_rate_idr_to_jpy: number | null;
           foreign_amount_idr: number | null;
           household_id: string;
           id: string;
@@ -185,6 +189,7 @@ export type Database = {
           category_id?: string | null;
           created_at?: string;
           entry_date: string;
+          exchange_rate_idr_to_jpy?: number | null;
           foreign_amount_idr?: number | null;
           household_id: string;
           id?: string;
@@ -202,6 +207,7 @@ export type Database = {
           category_id?: string | null;
           created_at?: string;
           entry_date?: string;
+          exchange_rate_idr_to_jpy?: number | null;
           foreign_amount_idr?: number | null;
           household_id?: string;
           id?: string;

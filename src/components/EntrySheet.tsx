@@ -14,6 +14,7 @@ import {
 import {
   validateEntryDraft,
   validateTransferDraft,
+  entryDraftAmountYen,
   type EntryDraftPrefill,
 } from "@/household/entry-form";
 import {
@@ -43,6 +44,10 @@ import {
   formatIdrDigits,
   parseIdrInput,
 } from "@/lib/format-idr";
+import {
+  formatExchangeRateInput,
+  parseExchangeRateInput,
+} from "@/lib/format-idr-rate";
 import {
   CategoryChip,
   DateField,
@@ -92,9 +97,11 @@ export function EntrySheet({
 }: EntrySheetProps) {
   const editing = entry != null;
   const amountRef = useRef<HTMLInputElement>(null);
+  const yenTouchedRef = useRef(false);
   const [kind, setKind] = useState<SheetKind>("expense");
   const [amountInput, setAmountInput] = useState("");
   const [foreignAmountInput, setForeignAmountInput] = useState("");
+  const [exchangeRateInput, setExchangeRateInput] = useState("");
   const [pocketId, setPocketId] = useState("");
   const [toPocketId, setToPocketId] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -147,6 +154,12 @@ export function EntrySheet({
           ? formatIdrDigits(entry.foreignAmountIdr)
           : "",
       );
+      setExchangeRateInput(
+        entry.exchangeRateIdrToJpy != null
+          ? formatExchangeRateInput(entry.exchangeRateIdrToJpy)
+          : "",
+      );
+      yenTouchedRef.current = false;
       setPocketId(entry.pocketId);
       setToPocketId(entry.toPocketId ?? "");
       setCategoryId(entry.categoryId ?? "");
@@ -159,6 +172,8 @@ export function EntrySheet({
         draft?.amountYen != null ? formatYenDigits(draft.amountYen) : "",
       );
       setForeignAmountInput("");
+      setExchangeRateInput("");
+      yenTouchedRef.current = Boolean(draft?.amountYen != null);
       const defaultPocket = defaultPocketId(pockets, userId);
       setPocketId(draft?.pocketId ?? defaultPocket);
       setToPocketId(
@@ -175,6 +190,33 @@ export function EntrySheet({
 
     setError(null);
   }, [categories, draft, entry, open, pockets, userId, visiblePockets]);
+
+  useEffect(() => {
+    if (!open || kind === "transfer" || yenTouchedRef.current) {
+      return;
+    }
+
+    const foreignAmountIdr = parseIdrInput(foreignAmountInput);
+    const exchangeRateIdrToJpy = parseExchangeRateInput(exchangeRateInput);
+    if (foreignAmountIdr == null || exchangeRateIdrToJpy == null) {
+      return;
+    }
+
+    const derivedAmountYen = entryDraftAmountYen({
+      kind,
+      amountYen: null,
+      foreignAmountIdr,
+      exchangeRateIdrToJpy,
+      pocketId,
+      categoryId,
+      entryDate,
+      note,
+    });
+
+    if (derivedAmountYen != null) {
+      setAmountInput(formatYenDigits(derivedAmountYen));
+    }
+  }, [exchangeRateInput, foreignAmountInput, kind, open]);
 
   const destinationPockets = visiblePockets.filter((pocket) => pocket.id !== pocketId);
   const pocketBalanceById = useMemo(() => {
@@ -317,24 +359,41 @@ export function EntrySheet({
     const foreignAmountIdr = trimmedForeignInput
       ? parseIdrInput(trimmedForeignInput)
       : null;
+    const trimmedRateInput = exchangeRateInput.trim();
+    const exchangeRateIdrToJpy = trimmedRateInput
+      ? parseExchangeRateInput(trimmedRateInput)
+      : null;
 
     if (trimmedForeignInput && foreignAmountIdr == null) {
       setError("Enter a positive amount in IDR.");
       return;
     }
 
-    const validationError = validateEntryDraft({
+    if (trimmedRateInput && exchangeRateIdrToJpy == null) {
+      setError("Enter a positive exchange rate.");
+      return;
+    }
+
+    const draft = {
       kind,
       amountYen,
       foreignAmountIdr,
+      exchangeRateIdrToJpy,
       pocketId,
       categoryId,
       entryDate,
       note,
-    });
+    };
+    const validationError = validateEntryDraft(draft);
 
     if (validationError) {
       setError(validationError);
+      return;
+    }
+
+    const resolvedAmountYen = entryDraftAmountYen(draft);
+    if (resolvedAmountYen == null) {
+      setError("Enter an amount in yen, or IDR with an exchange rate.");
       return;
     }
 
@@ -344,8 +403,9 @@ export function EntrySheet({
     try {
       const payload = {
         kind,
-        amountYen: amountYen!,
+        amountYen: resolvedAmountYen,
         foreignAmountIdr,
+        exchangeRateIdrToJpy,
         pocketId,
         categoryId,
         attributedMemberId: attributedMemberIdFromPicker(attribution),
@@ -536,18 +596,31 @@ export function EntrySheet({
         <YenAmountField
           ref={amountRef}
           value={amountInput}
-          onChange={setAmountInput}
+          onChange={(value) => {
+            yenTouchedRef.current = true;
+            setAmountInput(value);
+          }}
         />
       </Field>
 
       {kind !== "transfer" ? (
-        <Field label="Foreign amount (IDR)">
-          <IdrAmountField
-            value={foreignAmountInput}
-            onChange={setForeignAmountInput}
-            disabled={busy}
-          />
-        </Field>
+        <>
+          <Field label="Foreign amount (IDR)">
+            <IdrAmountField
+              value={foreignAmountInput}
+              onChange={setForeignAmountInput}
+              disabled={busy}
+            />
+          </Field>
+          <Field label="Exchange rate (¥ per IDR)">
+            <TextField
+              value={exchangeRateInput}
+              onChange={setExchangeRateInput}
+              placeholder="0.0095"
+              disabled={busy}
+            />
+          </Field>
+        </>
       ) : null}
 
       <Field label="Date">

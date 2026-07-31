@@ -11,6 +11,7 @@ export type Entry = {
   kind: EntryKind;
   amountYen: number;
   foreignAmountIdr: number | null;
+  exchangeRateIdrToJpy: number | null;
   entryDate: string;
   note: string | null;
   createdAt: string;

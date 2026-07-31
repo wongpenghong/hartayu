@@ -9,9 +9,11 @@ import {
   createCategory,
   fetchCategories,
   renameCategory,
+  updateCategoryBudgetGroup,
   updateCategoryEmoji,
   type Category,
 } from "@/household/categories";
+import { type BudgetGroup, BUDGET_GROUP_LABELS, BUDGET_GROUP_ORDER } from "@/household/budget-groups";
 import { fetchGoalContributions, fetchGoals } from "@/household/goals";
 import { fetchBills } from "@/household/bills";
 import { fetchHouseholdMembers, type HouseholdMember } from "@/household/members";
@@ -304,6 +306,7 @@ function CategoriesPanel({
   const [sheet, setSheet] = useState<CategorySheetMode>({ kind: "closed" });
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState("");
+  const [budgetGroup, setBudgetGroup] = useState<BudgetGroup | "">("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { household } = useAuth();
@@ -313,6 +316,7 @@ function CategoriesPanel({
   function openAdd() {
     setName("");
     setEmoji("");
+    setBudgetGroup("");
     setError(null);
     setSheet({ kind: "add", kindFilter });
   }
@@ -320,6 +324,7 @@ function CategoriesPanel({
   function openEdit(category: Category) {
     setName(category.name);
     setEmoji(category.emoji ?? "");
+    setBudgetGroup(category.budget_group ?? "");
     setError(null);
     setSheet({ kind: "edit", category });
   }
@@ -338,12 +343,24 @@ function CategoriesPanel({
     setError(null);
     try {
       if (sheet.kind === "add") {
-        const created = await createCategory(household.id, name, sheet.kindFilter, emoji);
+        const created = await createCategory(
+          household.id,
+          name,
+          sheet.kindFilter,
+          emoji,
+          sheet.kindFilter === "expense" ? budgetGroup || null : null,
+        );
         onChange([...categories, created]);
       } else if (sheet.kind === "edit") {
-        const updated = sheet.category.is_starter
+        let updated = sheet.category.is_starter
           ? await updateCategoryEmoji(sheet.category.id, emoji)
           : await renameCategory(sheet.category.id, name, emoji);
+        if (sheet.category.kind === "expense") {
+          updated = await updateCategoryBudgetGroup(
+            sheet.category.id,
+            budgetGroup || null,
+          );
+        }
         onChange(
           categories.map((row) => (row.id === updated.id ? updated : row)),
         );
@@ -392,7 +409,7 @@ function CategoriesPanel({
       <GroupCard
         footer={
           kindFilter === "expense"
-            ? "Starter names are fixed; tap any category to set its icon."
+            ? "Starter names are fixed; tap any category to set its icon or budget group."
             : "Income starter names stay fixed; tap to set an icon."
         }
       >
@@ -464,6 +481,23 @@ function CategoriesPanel({
             disabled={busy || (sheet.kind === "edit" && sheet.category.is_starter)}
           />
         </Field>
+        {(sheet.kind === "add" && sheet.kindFilter === "expense") ||
+        (sheet.kind === "edit" && sheet.category.kind === "expense") ? (
+          <Field label="Budget group">
+            <SelectField
+              value={budgetGroup}
+              onChange={(value) => setBudgetGroup(value as BudgetGroup | "")}
+              disabled={busy}
+            >
+              <option value="">None</option>
+              {BUDGET_GROUP_ORDER.map((group) => (
+                <option key={group} value={group}>
+                  {BUDGET_GROUP_LABELS[group]}
+                </option>
+              ))}
+            </SelectField>
+          </Field>
+        ) : null}
         {error ? <ErrorNote message={error} /> : null}
         <PrimaryAction
           disabled={busy || (nameRequired && !name.trim())}

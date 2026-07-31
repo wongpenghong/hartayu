@@ -1,4 +1,9 @@
 import { normalizeEmoji, validateEmoji } from "@/household/emoji-utils";
+import {
+  isBudgetGroup,
+  validateBudgetGroup,
+  type BudgetGroup,
+} from "@/household/budget-groups";
 import { getSupabase } from "@/lib/supabase";
 
 export type Category = {
@@ -8,8 +13,12 @@ export type Category = {
   kind: "expense" | "income";
   is_starter: boolean;
   monthly_limit_yen: number | null;
+  budget_group: BudgetGroup | null;
   emoji: string | null;
 };
+
+const categorySelect =
+  "id, household_id, name, kind, is_starter, monthly_limit_yen, budget_group, emoji";
 
 export function validateCategoryName(name: string): string | null {
   const trimmed = name.trim();
@@ -36,7 +45,7 @@ export async function fetchCategories(): Promise<Category[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
+    .select(categorySelect)
     .order("kind")
     .order("is_starter", { ascending: false })
     .order("name");
@@ -53,6 +62,7 @@ export async function createCategory(
   name: string,
   kind: "expense" | "income",
   emoji: string | null = null,
+  budgetGroup: BudgetGroup | null = null,
 ): Promise<Category> {
   const nameError = validateCategoryName(name);
   if (nameError) {
@@ -64,6 +74,11 @@ export async function createCategory(
     throw new Error(emojiError);
   }
 
+  const budgetGroupError = validateBudgetGroup(budgetGroup);
+  if (budgetGroupError) {
+    throw new Error(budgetGroupError);
+  }
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("categories")
@@ -73,8 +88,9 @@ export async function createCategory(
       kind,
       is_starter: false,
       emoji: normalizeEmoji(emoji),
+      budget_group: kind === "expense" ? budgetGroup : null,
     })
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
+    .select(categorySelect)
     .single();
 
   if (error || !data) {
@@ -98,11 +114,36 @@ export async function updateCategoryEmoji(
     .from("categories")
     .update({ emoji: normalizeEmoji(emoji) })
     .eq("id", categoryId)
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
+    .select(categorySelect)
     .single();
 
   if (error || !data) {
     throw error ?? new Error("Failed to update category icon");
+  }
+
+  return data;
+}
+
+export async function updateCategoryBudgetGroup(
+  categoryId: string,
+  budgetGroup: BudgetGroup | null,
+): Promise<Category> {
+  const budgetGroupError = validateBudgetGroup(budgetGroup);
+  if (budgetGroupError) {
+    throw new Error(budgetGroupError);
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("categories")
+    .update({ budget_group: budgetGroup })
+    .eq("id", categoryId)
+    .eq("kind", "expense")
+    .select(categorySelect)
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error("Failed to update category budget group");
   }
 
   return data;
@@ -134,7 +175,7 @@ export async function renameCategory(
     })
     .eq("id", categoryId)
     .eq("is_starter", false)
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
+    .select(categorySelect)
     .single();
 
   if (error || !data) {
@@ -158,7 +199,7 @@ export async function updateCategoryLimit(
     .from("categories")
     .update({ monthly_limit_yen: monthlyLimitYen })
     .eq("id", categoryId)
-    .select("id, household_id, name, kind, is_starter, monthly_limit_yen, emoji")
+    .select(categorySelect)
     .single();
 
   if (error || !data) {
@@ -166,4 +207,10 @@ export async function updateCategoryLimit(
   }
 
   return data;
+}
+
+export function categoryBudgetGroup(
+  category: Pick<Category, "budget_group">,
+): BudgetGroup | null {
+  return isBudgetGroup(category.budget_group) ? category.budget_group : null;
 }

@@ -12,6 +12,7 @@ type EntryRow = {
   kind: EntryKind;
   amount_yen: number;
   foreign_amount_idr: number | null;
+  exchange_rate_idr_to_jpy: number | null;
   entry_date: string;
   note: string | null;
   created_at: string;
@@ -29,6 +30,7 @@ function mapEntry(row: EntryRow): Entry {
     kind: row.kind,
     amountYen: row.amount_yen,
     foreignAmountIdr: row.foreign_amount_idr,
+    exchangeRateIdrToJpy: row.exchange_rate_idr_to_jpy,
     entryDate: row.entry_date,
     note: row.note,
     createdAt: row.created_at,
@@ -36,7 +38,7 @@ function mapEntry(row: EntryRow): Entry {
 }
 
 const entrySelect =
-  "id, account_id, to_account_id, category_id, member_id, attributed_member_id, bill_id, kind, amount_yen, foreign_amount_idr, entry_date, note, created_at";
+  "id, account_id, to_account_id, category_id, member_id, attributed_member_id, bill_id, kind, amount_yen, foreign_amount_idr, exchange_rate_idr_to_jpy, entry_date, note, created_at";
 
 export async function fetchEntries(): Promise<Entry[]> {
   const supabase = getSupabase();
@@ -65,6 +67,7 @@ export async function createEntry(params: {
   kind: Exclude<EntryKind, "transfer">;
   amountYen: number;
   foreignAmountIdr?: number | null;
+  exchangeRateIdrToJpy?: number | null;
   pocketId: string;
   categoryId: string;
   entryDate: string;
@@ -82,6 +85,7 @@ export async function createEntry(params: {
       kind: params.kind,
       amount_yen: params.amountYen,
       foreign_amount_idr: params.foreignAmountIdr ?? null,
+      exchange_rate_idr_to_jpy: params.exchangeRateIdrToJpy ?? null,
       account_id: params.pocketId,
       category_id: params.categoryId,
       entry_date: params.entryDate,
@@ -118,6 +122,7 @@ export async function createTransfer(params: {
       kind: "transfer",
       amount_yen: params.amountYen,
       foreign_amount_idr: null,
+      exchange_rate_idr_to_jpy: null,
       account_id: params.fromPocketId,
       to_account_id: params.toPocketId,
       category_id: null,
@@ -140,6 +145,7 @@ export async function updateEntry(
     kind: Exclude<EntryKind, "transfer">;
     amountYen: number;
     foreignAmountIdr: number | null;
+    exchangeRateIdrToJpy: number | null;
     pocketId: string;
     categoryId: string;
     attributedMemberId: string | null;
@@ -155,6 +161,7 @@ export async function updateEntry(
       kind: updates.kind,
       amount_yen: updates.amountYen,
       foreign_amount_idr: updates.foreignAmountIdr,
+      exchange_rate_idr_to_jpy: updates.exchangeRateIdrToJpy,
       account_id: updates.pocketId,
       category_id: updates.categoryId,
       attributed_member_id: updates.attributedMemberId,
@@ -190,6 +197,7 @@ export async function updateTransfer(
       kind: "transfer",
       amount_yen: updates.amountYen,
       foreign_amount_idr: null,
+      exchange_rate_idr_to_jpy: null,
       account_id: updates.fromPocketId,
       to_account_id: updates.toPocketId,
       category_id: null,
