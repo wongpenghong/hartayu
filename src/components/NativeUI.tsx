@@ -135,15 +135,15 @@ export function SheetOverlay({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/25 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/25 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
       <button
         type="button"
         aria-label="Close"
         className="absolute inset-0"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-neutral-900">
-        <div className="flex items-center justify-between border-b border-[#ececee] px-4 py-3 dark:border-neutral-800">
+      <div className="relative flex max-h-full min-h-0 w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-neutral-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#ececee] px-4 py-3 dark:border-neutral-800">
           <button
             type="button"
             onClick={onClose}
@@ -154,7 +154,9 @@ export function SheetOverlay({
           <p className="text-[15px] font-semibold">{title}</p>
           <span className="w-14" />
         </div>
-        <div className="space-y-4 p-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="space-y-4 p-4">{children}</div>
+        </div>
       </div>
     </div>
   );
