@@ -1,8 +1,9 @@
-import { validateHoldingName, validateHoldingQuantity } from "@/household/holdings";
+import { validateCostBasis, validateHoldingName, validateHoldingQuantity } from "@/household/holdings";
 import {
   parseSnkrdunkProductId,
   validateMarketLinkInput,
 } from "@/household/collectible-market-links";
+import { parseYenInput } from "@/lib/format-yen";
 import type { ConditionGrade } from "@/market/snkrdunk";
 
 export type BulkHoldingQueueItem = {
@@ -10,7 +11,7 @@ export type BulkHoldingQueueItem = {
   name: string;
   assetClassId: string;
   quantity: number | null;
-  costBasisYen: null;
+  costBasisYen: number | null;
   collectibleCode: string;
   snkrdunkProductId: number;
   conditionGrade: ConditionGrade;
@@ -20,6 +21,7 @@ export type BulkRowForm = {
   name: string;
   assetClassId: string;
   quantity: string;
+  costBasis: string;
   collectibleCode: string;
   snkrdunkProductId: string;
   conditionGrade: ConditionGrade | "";
@@ -66,6 +68,12 @@ export function validateBulkRow(row: BulkRowForm): string | null {
     return quantityError;
   }
 
+  const costBasisYen = parseYenInput(row.costBasis);
+  const costBasisError = validateCostBasis(costBasisYen);
+  if (costBasisError) {
+    return costBasisError;
+  }
+
   return validateMarketLinkInput({
     collectibleCode: row.collectibleCode,
     snkrdunkProductId: row.snkrdunkProductId,
@@ -86,13 +94,14 @@ export function queueItemFromForm(row: BulkRowForm): BulkHoldingQueueItem | null
 
   const quantity =
     row.quantity.trim() === "" ? null : Number.parseFloat(row.quantity);
+  const costBasisYen = parseYenInput(row.costBasis);
 
   return {
     clientKey: crypto.randomUUID(),
     name: row.name.trim(),
     assetClassId: row.assetClassId,
     quantity,
-    costBasisYen: null,
+    costBasisYen,
     collectibleCode: row.collectibleCode.trim(),
     snkrdunkProductId: productId,
     conditionGrade: row.conditionGrade,
@@ -107,6 +116,7 @@ export function emptyBulkRow(sticky: {
     name: "",
     assetClassId: sticky.assetClassId,
     quantity: "",
+    costBasis: "",
     collectibleCode: "",
     snkrdunkProductId: "",
     conditionGrade: sticky.conditionGrade,

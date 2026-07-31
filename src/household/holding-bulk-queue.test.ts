@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bulkRowIdentityKey,
   findDuplicateInQueue,
+  queueItemFromForm,
   validateBulkRow,
   type BulkHoldingQueueItem,
 } from "@/household/holding-bulk-queue";
@@ -60,6 +61,7 @@ describe("validateBulkRow", () => {
         name: "",
         assetClassId: "c1",
         quantity: "",
+        costBasis: "",
         collectibleCode: "P-159",
         snkrdunkProductId: "854923",
         conditionGrade: "psa10",
@@ -67,16 +69,28 @@ describe("validateBulkRow", () => {
     ).toBe("Holding name is required.");
   });
 
-  it("accepts valid row", () => {
+  it("accepts valid row with optional cost basis", () => {
     expect(
       validateBulkRow({
         name: "Charizard",
         assetClassId: "c1",
         quantity: "",
+        costBasis: "50000",
         collectibleCode: "P-159",
         snkrdunkProductId: "854923",
         conditionGrade: "psa10",
       }),
     ).toBeNull();
+
+    const item = queueItemFromForm({
+      name: "Charizard",
+      assetClassId: "c1",
+      quantity: "",
+      costBasis: "50000",
+      collectibleCode: "P-159",
+      snkrdunkProductId: "854923",
+      conditionGrade: "psa10",
+    });
+    expect(item?.costBasisYen).toBe(50_000);
   });
 });

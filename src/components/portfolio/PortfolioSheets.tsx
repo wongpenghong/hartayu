@@ -6,6 +6,7 @@ import {
   type ConditionGrade,
 } from "@/market/snkrdunk";
 import type { Holding } from "@/ledger/portfolio";
+import { formatYen } from "@/lib/format-yen";
 import {
   CheckboxField,
   DateField,
@@ -161,6 +162,7 @@ export function PortfolioBulkAddSheet({
   conditionGrade,
   name,
   quantity,
+  costBasis,
   collectibleCode,
   snkrdunkProductId,
   queue,
@@ -172,6 +174,7 @@ export function PortfolioBulkAddSheet({
   onConditionGradeChange,
   onNameChange,
   onQuantityChange,
+  onCostBasisChange,
   onCollectibleCodeChange,
   onSnkrdunkProductIdChange,
   onAddAnother,
@@ -184,6 +187,7 @@ export function PortfolioBulkAddSheet({
   conditionGrade: ConditionGrade | "";
   name: string;
   quantity: string;
+  costBasis: string;
   collectibleCode: string;
   snkrdunkProductId: string;
   queue: BulkHoldingQueueItem[];
@@ -195,6 +199,7 @@ export function PortfolioBulkAddSheet({
   onConditionGradeChange: (value: ConditionGrade | "") => void;
   onNameChange: (value: string) => void;
   onQuantityChange: (value: string) => void;
+  onCostBasisChange: (value: string) => void;
   onCollectibleCodeChange: (value: string) => void;
   onSnkrdunkProductIdChange: (value: string) => void;
   onAddAnother: () => void;
@@ -265,6 +270,9 @@ export function PortfolioBulkAddSheet({
           disabled={busy}
         />
       </Field>
+      <Field label="Total cost (optional)">
+        <YenAmountField value={costBasis} onChange={onCostBasisChange} disabled={busy} />
+      </Field>
       {duplicateWarning ? (
         <p className="text-[13px] font-medium text-[#ff9500]">
           This code, grade, and product ID are already in the queue.
@@ -276,6 +284,7 @@ export function PortfolioBulkAddSheet({
           {queue.map((item) => (
             <p key={item.clientKey} className="text-[14px] text-neutral-600 dark:text-neutral-400">
               {item.name} · {item.collectibleCode}
+              {item.costBasisYen != null ? ` · ${formatYen(item.costBasisYen)}` : ""}
             </p>
           ))}
         </div>
