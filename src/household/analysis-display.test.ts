@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
+import { setBudgetCycleConfig } from "@/lib/budget-cycle-config";
 import {
   analysisQuickSummary,
   formatSavingsRatio,
@@ -18,7 +19,8 @@ const entries: Entry[] = [
     amountYen: 3_100,
     foreignAmountIdr: null,
     exchangeRateIdrToJpy: null,
-    entryDate: "2026-07-10",
+    entryDate: "2026-07-26",
+    merchant: null,
     note: null,
     createdAt: "2026-07-10T00:00:00Z",
   },
@@ -34,7 +36,8 @@ const entries: Entry[] = [
     amountYen: 900,
     foreignAmountIdr: null,
     exchangeRateIdrToJpy: null,
-    entryDate: "2026-07-20",
+    entryDate: "2026-07-30",
+    merchant: null,
     note: null,
     createdAt: "2026-07-20T00:00:00Z",
   },
@@ -50,16 +53,20 @@ const entries: Entry[] = [
     amountYen: 10_000,
     foreignAmountIdr: null,
     exchangeRateIdrToJpy: null,
-    entryDate: "2026-07-01",
+    entryDate: "2026-07-25",
+    merchant: null,
     note: null,
     createdAt: "2026-07-01T00:00:00Z",
   },
 ];
 
 describe("analysisQuickSummary", () => {
+  beforeEach(() => {
+    setBudgetCycleConfig({ startDay: 25, endDay: 24 });
+  });
   it("computes spend, savings, and top category for a month", () => {
-    expect(analysisQuickSummary(entries, 2026, 7, "2026-07-31")).toEqual({
-      avgDailySpendYen: 129,
+    expect(analysisQuickSummary(entries, 2026, 7, "2026-08-03")).toEqual({
+      avgDailySpendYen: 400,
       topExpenseCategoryId: "food",
       topExpenseCategoryYen: 4_000,
       savingsYen: 6_000,
@@ -67,9 +74,9 @@ describe("analysisQuickSummary", () => {
     });
   });
 
-  it("uses full month length for past months", () => {
+  it("uses full cycle length for past cycles", () => {
     expect(
-      analysisQuickSummary(entries, 2026, 6, "2026-07-31").avgDailySpendYen,
+      analysisQuickSummary(entries, 2026, 6, "2026-08-03").avgDailySpendYen,
     ).toBe(0);
   });
 });

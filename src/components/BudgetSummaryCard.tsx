@@ -18,7 +18,7 @@ export function BudgetSummaryCard({
   const paceHint = formatBudgetPaceHint(pace);
 
   return (
-    <GroupCard title="This month">
+    <GroupCard title="This cycle">
       <div className="px-4 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>

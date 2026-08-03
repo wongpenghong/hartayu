@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from "react";
-import { forwardRef } from "react";
+import { forwardRef, useMemo } from "react";
 import { formatIdrInputLive } from "@/lib/format-idr";
 import { formatYenInputLive } from "@/lib/format-yen";
 import { Link } from "react-router-dom";
@@ -221,6 +221,55 @@ export function TextField({
       disabled={disabled}
       required={required}
     />
+  );
+}
+
+export function MerchantField({
+  value,
+  onChange,
+  suggestions,
+  disabled,
+  placeholder = "Optional",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  suggestions: readonly string[];
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const visible = useMemo(() => {
+    const query = value.trim().toLowerCase();
+    const filtered = query
+      ? suggestions.filter((merchant) =>
+          merchant.toLowerCase().includes(query),
+        )
+      : suggestions;
+
+    return filtered.slice(0, 8);
+  }, [suggestions, value]);
+
+  return (
+    <div className="space-y-2">
+      <TextField
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+      {visible.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {visible.map((merchant) => (
+            <CategoryChip
+              key={merchant}
+              label={merchant}
+              selected={value === merchant}
+              disabled={disabled}
+              onClick={() => onChange(merchant)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -623,28 +672,54 @@ export function LimitProgressBar({
   spentYen,
   limitYen,
   highlightOver = false,
+  tone,
+  showPercent = false,
 }: {
   spentYen: number;
   limitYen: number;
   highlightOver?: boolean;
+  tone?: {
+    track: string;
+    fill: string;
+    overTrack: string;
+    overFill: string;
+  };
+  showPercent?: boolean;
 }) {
   const over = highlightOver && limitYen > 0 && spentYen > limitYen;
   const ratio = limitYen > 0 ? Math.min(spentYen / limitYen, 1) : 0;
+  const percent =
+    limitYen > 0 ? Math.min(Math.round((spentYen / limitYen) * 100), 999) : 0;
+
+  const trackClass = tone
+    ? over
+      ? tone.overTrack
+      : tone.track
+    : over
+      ? "bg-[#ffd8d6] dark:bg-[#4a1f1f]"
+      : "bg-[#e8f5c4] dark:bg-neutral-800";
+
+  const fillClass = tone
+    ? over
+      ? tone.overFill
+      : tone.fill
+    : over
+      ? "bg-[#ff3b30]"
+      : "bg-neutral-900 dark:bg-neutral-200";
 
   return (
-    <div
-      className={`relative h-2 overflow-hidden rounded-full ${
-        over ? "bg-[#ffd8d6] dark:bg-[#4a1f1f]" : "bg-[#e8f5c4] dark:bg-neutral-800"
-      }`}
-    >
-      <div
-        className={`h-full rounded-full transition-all ${
-          over
-            ? "bg-[#ff3b30]"
-            : "bg-neutral-900 dark:bg-neutral-200"
-        }`}
-        style={{ width: `${ratio * 100}%` }}
-      />
+    <div className="flex items-center gap-2">
+      <div className={`relative h-2 flex-1 overflow-hidden rounded-full ${trackClass}`}>
+        <div
+          className={`h-full rounded-full transition-all ${fillClass}`}
+          style={{ width: `${ratio * 100}%` }}
+        />
+      </div>
+      {showPercent ? (
+        <span className="w-8 shrink-0 text-right text-[11px] tabular-nums text-neutral-400 dark:text-neutral-500">
+          {percent}%
+        </span>
+      ) : null}
     </div>
   );
 }

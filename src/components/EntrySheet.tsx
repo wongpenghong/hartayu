@@ -33,7 +33,7 @@ import { markBillPaid } from "@/household/bills";
 import type { Pocket } from "@/household/pockets";
 import { activePockets, defaultPocketId } from "@/household/pocket-utils";
 import type { Entry, EntryKind } from "@/ledger/types";
-import { recentCategoryIds } from "@/ledger/ledger";
+import { recentCategoryIds, knownMerchants } from "@/ledger/ledger";
 import {
   formatYen,
   formatYenDigits,
@@ -54,6 +54,7 @@ import {
   ErrorNote,
   Field,
   IdrAmountField,
+  MerchantField,
   PillTabs,
   PrimaryAction,
   SelectField,
@@ -106,6 +107,7 @@ export function EntrySheet({
   const [toPocketId, setToPocketId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [entryDate, setEntryDate] = useState(todayInTokyo());
+  const [merchant, setMerchant] = useState("");
   const [note, setNote] = useState("");
   const [attribution, setAttribution] = useState(userId);
   const [busy, setBusy] = useState(false);
@@ -140,6 +142,7 @@ export function EntrySheet({
       .map((id) => byId.get(id))
       .filter((category): category is Category => category != null);
   }, [entries, kind, visibleCategories]);
+  const merchantSuggestions = useMemo(() => knownMerchants(entries), [entries]);
 
   useEffect(() => {
     if (!open) {
@@ -164,6 +167,7 @@ export function EntrySheet({
       setToPocketId(entry.toPocketId ?? "");
       setCategoryId(entry.categoryId ?? "");
       setEntryDate(entry.entryDate);
+      setMerchant(entry.merchant ?? "");
       setNote(entry.note ?? "");
       setAttribution(attributionPickerValue(entry, userId));
     } else {
@@ -184,6 +188,7 @@ export function EntrySheet({
         draft?.categoryId ?? defaultCategoryId(categories, draft?.kind ?? "expense"),
       );
       setEntryDate(draft?.entryDate ?? todayInTokyo());
+      setMerchant("");
       setNote(draft?.note ?? "");
       setAttribution(draft?.attribution ?? userId);
     }
@@ -410,6 +415,7 @@ export function EntrySheet({
         categoryId,
         attributedMemberId: attributedMemberIdFromPicker(attribution),
         entryDate,
+        merchant,
         note,
       };
 
@@ -558,6 +564,15 @@ export function EntrySheet({
                 ))
               )}
             </SelectField>
+          </Field>
+
+          <Field label="Merchant">
+            <MerchantField
+              value={merchant}
+              onChange={setMerchant}
+              suggestions={merchantSuggestions}
+              disabled={busy}
+            />
           </Field>
 
           <Field label="Pocket">

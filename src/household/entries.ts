@@ -14,6 +14,7 @@ type EntryRow = {
   foreign_amount_idr: number | null;
   exchange_rate_idr_to_jpy: number | null;
   entry_date: string;
+  merchant: string | null;
   note: string | null;
   created_at: string;
 };
@@ -32,13 +33,14 @@ function mapEntry(row: EntryRow): Entry {
     foreignAmountIdr: row.foreign_amount_idr,
     exchangeRateIdrToJpy: row.exchange_rate_idr_to_jpy,
     entryDate: row.entry_date,
+    merchant: row.merchant,
     note: row.note,
     createdAt: row.created_at,
   };
 }
 
 const entrySelect =
-  "id, account_id, to_account_id, category_id, member_id, attributed_member_id, bill_id, kind, amount_yen, foreign_amount_idr, exchange_rate_idr_to_jpy, entry_date, note, created_at";
+  "id, account_id, to_account_id, category_id, member_id, attributed_member_id, bill_id, kind, amount_yen, foreign_amount_idr, exchange_rate_idr_to_jpy, entry_date, merchant, note, created_at";
 
 export async function fetchEntries(): Promise<Entry[]> {
   const supabase = getSupabase();
@@ -55,8 +57,8 @@ export async function fetchEntries(): Promise<Entry[]> {
   return (data ?? []).map(mapEntry);
 }
 
-function normalizeNote(note?: string | null): string | null {
-  const trimmed = note?.trim();
+function normalizeOptionalText(value?: string | null): string | null {
+  const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 }
 
@@ -71,6 +73,7 @@ export async function createEntry(params: {
   pocketId: string;
   categoryId: string;
   entryDate: string;
+  merchant?: string | null;
   note?: string | null;
   billId?: string | null;
 }): Promise<Entry> {
@@ -89,7 +92,8 @@ export async function createEntry(params: {
       account_id: params.pocketId,
       category_id: params.categoryId,
       entry_date: params.entryDate,
-      note: normalizeNote(params.note),
+      merchant: normalizeOptionalText(params.merchant),
+      note: normalizeOptionalText(params.note),
       bill_id: params.billId ?? null,
     })
     .select(entrySelect)
@@ -127,7 +131,7 @@ export async function createTransfer(params: {
       to_account_id: params.toPocketId,
       category_id: null,
       entry_date: params.entryDate,
-      note: normalizeNote(params.note),
+      note: normalizeOptionalText(params.note),
     })
     .select(entrySelect)
     .single();
@@ -150,6 +154,7 @@ export async function updateEntry(
     categoryId: string;
     attributedMemberId: string | null;
     entryDate: string;
+    merchant?: string | null;
     note?: string | null;
   },
 ): Promise<Entry> {
@@ -166,7 +171,8 @@ export async function updateEntry(
       category_id: updates.categoryId,
       attributed_member_id: updates.attributedMemberId,
       entry_date: updates.entryDate,
-      note: normalizeNote(updates.note),
+      merchant: normalizeOptionalText(updates.merchant),
+      note: normalizeOptionalText(updates.note),
     })
     .eq("id", entryId)
     .select(entrySelect)
@@ -202,7 +208,7 @@ export async function updateTransfer(
       to_account_id: updates.toPocketId,
       category_id: null,
       entry_date: updates.entryDate,
-      note: normalizeNote(updates.note),
+      note: normalizeOptionalText(updates.note),
     })
     .eq("id", entryId)
     .select(entrySelect)

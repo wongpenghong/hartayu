@@ -1,6 +1,10 @@
 import { FAMILY_ATTRIBUTION_ID } from "@/household/attribution";
 import { getSupabase } from "@/lib/supabase";
-import { currentMonthInTokyo, formatMonthLabel } from "@/lib/format-yen";
+import {
+  budgetCycleLabel,
+  budgetCyclePeriodKey,
+  currentBudgetCycleInTokyo,
+} from "@/lib/budget-cycle";
 import type { Bill } from "@/ledger/types";
 
 export type BillRow = {
@@ -64,8 +68,8 @@ export function validateBillAmount(amountYen: number | null): string | null {
 }
 
 export function currentPeriodInTokyo(now = new Date()): string {
-  const { year, month } = currentMonthInTokyo(now);
-  return `${year}-${String(month).padStart(2, "0")}`;
+  const { year, month } = currentBudgetCycleInTokyo(now);
+  return budgetCyclePeriodKey(year, month);
 }
 
 export function isBillUnpaid(bill: Bill, period: string): boolean {
@@ -87,7 +91,7 @@ export function unpaidBillsForPeriod(bills: Bill[], period: string): Bill[] {
 }
 
 export function billPayNote(name: string, year: number, month: number): string {
-  return `${name.trim()} ${formatMonthLabel(year, month)}`;
+  return `${name.trim()} ${budgetCycleLabel(year, month)}`;
 }
 
 export function billAttributionPickerValue(

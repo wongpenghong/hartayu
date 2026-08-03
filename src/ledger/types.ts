@@ -13,6 +13,7 @@ export type Entry = {
   foreignAmountIdr: number | null;
   exchangeRateIdrToJpy: number | null;
   entryDate: string;
+  merchant: string | null;
   note: string | null;
   createdAt: string;
 };

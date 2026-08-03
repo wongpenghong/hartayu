@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useAuth } from "@/auth/AuthProvider";
 import type { Category } from "@/household/categories";
 import type { Pocket } from "@/household/pockets";
 import { activePockets } from "@/household/pocket-utils";
@@ -8,13 +9,16 @@ import {
 } from "@/household/attribution";
 import type { HouseholdMember } from "@/household/members";
 import {
+  budgetCyclePickerOptions,
+  currentBudgetCycleInTokyo,
+} from "@/lib/budget-cycle";
+import {
   formatDateRangeLabel,
   isCustomDateRange,
 } from "@/household/entry-filter";
 import {
   DateField,
   Field,
-  MonthField,
   PillTabs,
   SelectField,
   SheetOverlay,
@@ -39,6 +43,20 @@ export function EntryFilterToolbar({
   onReset: () => void;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { household } = useAuth();
+  const currentCycle = useMemo(
+    () => currentBudgetCycleInTokyo(),
+    [household?.budgetCycleEndDay, household?.budgetCycleStartDay],
+  );
+  const cycleOptions = useMemo(
+    () => budgetCyclePickerOptions(currentCycle.year, currentCycle.month),
+    [
+      currentCycle.month,
+      currentCycle.year,
+      household?.budgetCycleEndDay,
+      household?.budgetCycleStartDay,
+    ],
+  );
   const memberOptions = useMemo(
     () => memberFilterOptions(members, userId),
     [members, userId],
@@ -106,7 +124,13 @@ export function EntryFilterToolbar({
             </p>
           ) : (
             <div className="min-w-0 flex-1">
-              <MonthField value={monthValue} onChange={setMonth} />
+              <SelectField value={monthValue} onChange={setMonth}>
+                {cycleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </SelectField>
             </div>
           )}
           <button
@@ -193,7 +217,7 @@ export function EntryFilterToolbar({
             onClick={clearDateRange}
             className="text-[15px] font-medium text-[#007aff]"
           >
-            Use month instead
+            Use cycle instead
           </button>
         ) : null}
       </SheetOverlay>

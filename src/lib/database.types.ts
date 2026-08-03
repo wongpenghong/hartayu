@@ -177,6 +177,7 @@ export type Database = {
           kind: "expense" | "income" | "transfer";
           member_id: string;
           attributed_member_id: string | null;
+          merchant: string | null;
           note: string | null;
           to_account_id: string | null;
           updated_at: string;
@@ -195,6 +196,7 @@ export type Database = {
           id?: string;
           kind: "expense" | "income" | "transfer";
           member_id: string;
+          merchant?: string | null;
           note?: string | null;
           to_account_id?: string | null;
           updated_at?: string;
@@ -213,6 +215,7 @@ export type Database = {
           id?: string;
           kind?: "expense" | "income" | "transfer";
           member_id?: string;
+          merchant?: string | null;
           note?: string | null;
           to_account_id?: string | null;
           updated_at?: string;
@@ -390,19 +393,34 @@ export type Database = {
       };
       households: {
         Row: {
+          budget_cycle_end_day: number;
+          budget_cycle_start_day: number;
           created_at: string;
           id: string;
           name: string;
+          needs_monthly_limit_yen: number | null;
+          savings_monthly_limit_yen: number | null;
+          wants_monthly_limit_yen: number | null;
         };
         Insert: {
+          budget_cycle_end_day?: number;
+          budget_cycle_start_day?: number;
           created_at?: string;
           id?: string;
           name: string;
+          needs_monthly_limit_yen?: number | null;
+          savings_monthly_limit_yen?: number | null;
+          wants_monthly_limit_yen?: number | null;
         };
         Update: {
+          budget_cycle_end_day?: number;
+          budget_cycle_start_day?: number;
           created_at?: string;
           id?: string;
           name?: string;
+          needs_monthly_limit_yen?: number | null;
+          savings_monthly_limit_yen?: number | null;
+          wants_monthly_limit_yen?: number | null;
         };
         Relationships: [];
       };

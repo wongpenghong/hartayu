@@ -1,8 +1,8 @@
-import { currentMonthInTokyo } from "@/lib/format-yen";
+import { currentBudgetCycleInTokyo } from "@/lib/budget-cycle";
 import type { EntryFilter } from "@/ledger/types";
 
 export function defaultEntryFilter(now = new Date()): EntryFilter {
-  const { year, month } = currentMonthInTokyo(now);
+  const { year, month } = currentBudgetCycleInTokyo(now);
   return { year, month };
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/auth/AuthProvider";
 import { FAMILY_ATTRIBUTION_ID } from "@/household/attribution";
 import {
   analysisQuickSummary,
@@ -38,12 +39,8 @@ import {
   incomeTotalsByRecentMonths,
 } from "@/ledger/ledger";
 import type { EntryKind } from "@/ledger/types";
-import {
-  currentMonthInTokyo,
-  formatMonthLabel,
-  formatYen,
-  todayInTokyo,
-} from "@/lib/format-yen";
+import { budgetCycleLabel, currentBudgetCycleInTokyo } from "@/lib/budget-cycle";
+import { formatYen, todayInTokyo } from "@/lib/format-yen";
 
 type BreakdownDimension = "category" | "pocket" | "user" | "month";
 
@@ -68,17 +65,21 @@ export default function AnalysisPage() {
   const [loading, setLoading] = useState(!hasPageCache(ANALYSIS_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const currentMonth = useMemo(() => currentMonthInTokyo(), []);
+  const { household } = useAuth();
+  const currentCycle = useMemo(
+    () => currentBudgetCycleInTokyo(),
+    [household?.budgetCycleEndDay, household?.budgetCycleStartDay],
+  );
   const [selectedMonthValue, setSelectedMonthValue] = useState(
-    `${currentMonth.year}-${String(currentMonth.month).padStart(2, "0")}`,
+    `${currentCycle.year}-${String(currentCycle.month).padStart(2, "0")}`,
   );
   const selectedMonth = useMemo(() => {
     const [year, month] = selectedMonthValue.split("-").map(Number);
-    return { year, month, label: formatMonthLabel(year, month) };
+    return { year, month, label: budgetCycleLabel(year, month) };
   }, [selectedMonthValue]);
   const monthOptions = useMemo(
-    () => monthPickerOptions(currentMonth.year, currentMonth.month),
-    [currentMonth.month, currentMonth.year],
+    () => monthPickerOptions(currentCycle.year, currentCycle.month),
+    [currentCycle.month, currentCycle.year],
   );
   const categoriesById = useMemo(
     () => categoryNameById(categories),
@@ -89,10 +90,10 @@ export default function AnalysisPage() {
     () =>
       incomeExpenseChartPoints(
         entries,
-        currentMonth.year,
-        currentMonth.month,
+        currentCycle.year,
+        currentCycle.month,
       ),
-    [currentMonth.month, currentMonth.year, entries],
+    [currentCycle.month, currentCycle.year, entries],
   );
   const quickSummary = useMemo(
     () =>
@@ -163,7 +164,7 @@ export default function AnalysisPage() {
       .filter((row) => row.totalYen > 0)
       .map((row, index) => ({
         id: row.id,
-        label: formatMonthLabel(row.year, row.month),
+        label: budgetCycleLabel(row.year, row.month),
         value: row.totalYen,
         color: breakdownColor(index),
       }));

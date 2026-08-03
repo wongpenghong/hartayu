@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
+import { setBudgetCycleConfig } from "@/lib/budget-cycle-config";
 import {
   balanceForPocket,
   balancesByPocket,
   budgetPace,
+  pocketDailyPace,
   expenseTotalForDate,
   expenseTotalForDateRange,
   expenseTotalsByCategory,
@@ -16,6 +18,7 @@ import {
   monthlyTotals,
   monthlyTotalsByCategory,
   recentCategoryIds,
+  knownMerchants,
   recentEntries,
   remainingBudgetByCategory,
   trendPercent,
@@ -43,6 +46,7 @@ function entry(
     billId: null,
     foreignAmountIdr: null,
     exchangeRateIdrToJpy: null,
+    merchant: null,
     note: null,
     createdAt: "2026-07-01T00:00:00Z",
     ...overrides,
@@ -50,6 +54,9 @@ function entry(
 }
 
 describe("ledger", () => {
+  beforeEach(() => {
+    setBudgetCycleConfig({ startDay: 25, endDay: 24 });
+  });
   it("returns zero balances for empty inputs", () => {
     expect(balanceForPocket([], "pocket-a")).toBe(0);
     expect(balancesByPocket([], pockets)).toEqual([
@@ -101,28 +108,28 @@ describe("ledger", () => {
         pocketId: "pocket-a",
         kind: "income",
         amountYen: 400_000,
-        entryDate: "2026-07-01",
+        entryDate: "2026-07-26",
       }),
       entry({
         id: "2",
         pocketId: "pocket-a",
         kind: "expense",
         amountYen: 12_999,
-        entryDate: "2026-07-05",
+        entryDate: "2026-07-29",
       }),
       entry({
         id: "3",
         pocketId: "pocket-b",
         kind: "expense",
         amountYen: 3_000,
-        entryDate: "2026-06-30",
+        entryDate: "2026-07-24",
       }),
       entry({
         id: "4",
         pocketId: "pocket-a",
         kind: "income",
         amountYen: 1,
-        entryDate: "2026-07-31",
+        entryDate: "2026-08-10",
       }),
     ];
 
@@ -169,7 +176,7 @@ describe("ledger", () => {
         categoryId: "cat-food",
         kind: "expense",
         amountYen: 1_000,
-        entryDate: "2026-07-01",
+        entryDate: "2026-07-26",
       }),
       entry({
         id: "2",
@@ -177,7 +184,7 @@ describe("ledger", () => {
         categoryId: "cat-food",
         kind: "expense",
         amountYen: 2_000,
-        entryDate: "2026-07-02",
+        entryDate: "2026-07-27",
       }),
       entry({
         id: "3",
@@ -185,7 +192,7 @@ describe("ledger", () => {
         categoryId: "cat-salary",
         kind: "income",
         amountYen: 300_000,
-        entryDate: "2026-06-30",
+        entryDate: "2026-07-24",
       }),
     ];
 
@@ -276,7 +283,7 @@ describe("ledger", () => {
         categoryId: "cat-food",
         kind: "expense",
         amountYen: 1_500,
-        entryDate: "2026-07-01",
+        entryDate: "2026-07-26",
       }),
       entry({
         id: "2",
@@ -284,7 +291,7 @@ describe("ledger", () => {
         categoryId: "cat-food",
         kind: "expense",
         amountYen: 500,
-        entryDate: "2026-07-10",
+        entryDate: "2026-07-30",
       }),
       entry({
         id: "3",
@@ -292,7 +299,7 @@ describe("ledger", () => {
         categoryId: "cat-salary",
         kind: "income",
         amountYen: 400_000,
-        entryDate: "2026-07-05",
+        entryDate: "2026-07-29",
       }),
       entry({
         id: "4",
@@ -300,7 +307,7 @@ describe("ledger", () => {
         categoryId: "cat-rent",
         kind: "expense",
         amountYen: 80_000,
-        entryDate: "2026-06-30",
+        entryDate: "2026-07-24",
       }),
     ];
 
@@ -360,7 +367,7 @@ describe("ledger", () => {
         categoryId: "cat-food",
         kind: "expense",
         amountYen: 800,
-        entryDate: "2026-07-01",
+        entryDate: "2026-07-26",
       }),
       entry({
         id: "2",
@@ -368,7 +375,7 @@ describe("ledger", () => {
         categoryId: "cat-rent",
         kind: "expense",
         amountYen: 1_200,
-        entryDate: "2026-07-02",
+        entryDate: "2026-07-27",
       }),
       entry({
         id: "3",
@@ -376,7 +383,7 @@ describe("ledger", () => {
         categoryId: "cat-food",
         kind: "expense",
         amountYen: 200,
-        entryDate: "2026-06-01",
+        entryDate: "2026-06-26",
       }),
     ];
 
@@ -404,7 +411,7 @@ describe("ledger", () => {
         pocketId: "pocket-a",
         kind: "expense",
         amountYen: 100_000,
-        entryDate: "2026-07-01",
+        entryDate: "2026-07-26",
         memberId: "member-a",
         attributedMemberId: null,
       }),
@@ -413,7 +420,7 @@ describe("ledger", () => {
         pocketId: "pocket-a",
         kind: "expense",
         amountYen: 500,
-        entryDate: "2026-07-02",
+        entryDate: "2026-07-27",
         memberId: "member-a",
         attributedMemberId: "member-b",
       }),
@@ -422,7 +429,7 @@ describe("ledger", () => {
         pocketId: "pocket-b",
         kind: "expense",
         amountYen: 300,
-        entryDate: "2026-07-03",
+        entryDate: "2026-07-28",
         memberId: "member-b",
         attributedMemberId: "member-b",
       }),
@@ -441,7 +448,7 @@ describe("ledger", () => {
         pocketId: "pocket-a",
         kind: "expense",
         amountYen: 850,
-        entryDate: "2026-07-17",
+        entryDate: "2026-08-03",
       }),
     ];
     const withIdr: Entry[] = [
@@ -451,7 +458,7 @@ describe("ledger", () => {
         kind: "expense",
         amountYen: 850,
         foreignAmountIdr: 35_000_000,
-        entryDate: "2026-07-17",
+        entryDate: "2026-08-03",
       }),
     ];
 
@@ -544,6 +551,49 @@ describe("ledger", () => {
     expect(recentCategoryIds(entries, "income", 5)).toEqual(["cat-salary"]);
   });
 
+  it("returns unique merchants by recency", () => {
+    const entries: Entry[] = [
+      entry({
+        id: "1",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 100,
+        entryDate: "2026-07-04",
+        merchant: "Tokyu Store",
+        createdAt: "2026-07-04T10:00:00Z",
+      }),
+      entry({
+        id: "2",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 200,
+        entryDate: "2026-07-03",
+        merchant: "Uber",
+        createdAt: "2026-07-03T10:00:00Z",
+      }),
+      entry({
+        id: "3",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 300,
+        entryDate: "2026-07-02",
+        merchant: "tokyu store",
+        createdAt: "2026-07-02T10:00:00Z",
+      }),
+      entry({
+        id: "4",
+        pocketId: "pocket-a",
+        kind: "expense",
+        amountYen: 400,
+        entryDate: "2026-07-01",
+        merchant: null,
+        createdAt: "2026-07-01T10:00:00Z",
+      }),
+    ];
+
+    expect(knownMerchants(entries, 5)).toEqual(["Tokyu Store", "Uber"]);
+  });
+
   it("groups entries by day newest first", () => {
     const entries: Entry[] = [
       entry({
@@ -586,7 +636,7 @@ describe("ledger", () => {
         categoryId: "cat-food",
         kind: "expense",
         amountYen: 15_000,
-        entryDate: "2026-07-15",
+        entryDate: "2026-08-01",
       }),
       entry({
         id: "2",
@@ -594,19 +644,24 @@ describe("ledger", () => {
         categoryId: "cat-rent",
         kind: "expense",
         amountYen: 80_000,
-        entryDate: "2026-07-10",
+        entryDate: "2026-07-30",
       }),
     ];
 
-    expect(budgetPace(15_000, 30_000, 2026, 7, "2026-07-15")).toEqual({
+    expect(pocketDailyPace(341_919, 2026, 7, "2026-08-03")).toEqual({
+      daysLeft: 22,
+      dailyAllowanceYen: 15_541,
+    });
+
+    expect(budgetPace(15_000, 30_000, 2026, 7, "2026-08-03")).toEqual({
       daysInMonth: 31,
-      daysElapsed: 15,
-      daysLeft: 17,
+      daysElapsed: 10,
+      daysLeft: 22,
       spentYen: 15_000,
       limitYen: 30_000,
       remainingYen: 15_000,
-      projectedSpendYen: 31_000,
-      dailyAllowanceYen: 882,
+      projectedSpendYen: 46_500,
+      dailyAllowanceYen: 681,
     });
 
     expect(
@@ -665,7 +720,7 @@ describe("ledger", () => {
         pocketId: "pocket-a",
         kind: "income",
         amountYen: 100_000,
-        entryDate: "2026-07-01",
+        entryDate: "2026-07-26",
       }),
     ];
 

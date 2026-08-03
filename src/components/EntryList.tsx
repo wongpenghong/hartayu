@@ -3,10 +3,11 @@ import { canEditEntry, entryAttributionLabel } from "@/household/attribution";
 import type { HouseholdMember } from "@/household/members";
 import {
   entryAmountTone,
+  entryPrimaryLabel,
+  entrySecondaryParts,
   formatDailyNetYen,
   formatDayGroupHeader,
   formatEntryDate,
-  formatEntryForeignIdr,
   formatSignedEntryYen,
   formatTransferLabel,
   netTone,
@@ -41,13 +42,18 @@ function EntryRow({
   showDate?: boolean;
 }) {
   const canEdit = canEditEntry(entry, currentUserId);
-  const foreignIdr = formatEntryForeignIdr(entry);
   const isTransfer = entry.kind === "transfer";
   const fromName = pocketNameById.get(entry.pocketId) ?? "Pocket";
   const toName =
     entry.toPocketId != null
       ? (pocketNameById.get(entry.toPocketId) ?? "Pocket")
       : "Pocket";
+  const primaryLabel = isTransfer
+    ? formatTransferLabel(fromName, toName)
+    : entryPrimaryLabel(entry, categoryNameById);
+  const secondaryLabel = isTransfer
+    ? "Transfer"
+    : entrySecondaryParts(entry, categoryNameById, fromName).join(" · ");
 
   return (
     <ListRow
@@ -67,14 +73,10 @@ function EntryRow({
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[17px] font-medium">
-          {isTransfer
-            ? formatTransferLabel(fromName, toName)
-            : (categoryNameById.get(entry.categoryId ?? "") ?? "Category")}
+          {primaryLabel}
         </span>
         <span className="mt-0.5 block truncate text-[13px] text-neutral-500">
-          {isTransfer ? "Transfer" : fromName}
-          {foreignIdr ? ` · ${foreignIdr}` : ""}
-          {entry.note ? ` · ${entry.note}` : ""}
+          {secondaryLabel}
         </span>
         {showDate ? (
           <span className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-neutral-400">

@@ -46,6 +46,42 @@ export function formatTransferLabel(
   return `${fromName} → ${toName}`;
 }
 
+export function entryPrimaryLabel(
+  entry: Pick<Entry, "kind" | "categoryId" | "merchant">,
+  categoryNameById: Map<string, string>,
+): string {
+  if (entry.merchant) {
+    return entry.merchant;
+  }
+
+  return categoryNameById.get(entry.categoryId ?? "") ?? "Category";
+}
+
+export function entrySecondaryParts(
+  entry: Pick<Entry, "kind" | "categoryId" | "merchant" | "note" | "foreignAmountIdr">,
+  categoryNameById: Map<string, string>,
+  pocketName: string,
+): string[] {
+  const parts: string[] = [];
+
+  if (entry.merchant && entry.kind !== "transfer") {
+    parts.push(categoryNameById.get(entry.categoryId ?? "") ?? "Category");
+  }
+
+  parts.push(pocketName);
+
+  const foreignIdr = formatEntryForeignIdr(entry);
+  if (foreignIdr) {
+    parts.push(foreignIdr);
+  }
+
+  if (entry.note) {
+    parts.push(entry.note);
+  }
+
+  return parts;
+}
+
 export function formatEntryForeignIdr(
   entry: Pick<Entry, "foreignAmountIdr">,
 ): string | null {

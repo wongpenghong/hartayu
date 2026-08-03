@@ -13,13 +13,9 @@ import {
   memberEmail,
   usernameFromEmail,
 } from "@/auth/member-auth";
-import { fetchHousehold, fetchStarterCategories } from "@/household/household";
+import { fetchHousehold, fetchStarterCategories, type HouseholdSummary } from "@/household/household";
+import { setBudgetCycleConfig } from "@/lib/budget-cycle-config";
 import { getSupabase } from "@/lib/supabase";
-
-type HouseholdSummary = {
-  id: string;
-  name: string;
-};
 
 type AuthContextValue = {
   session: Session | null;
@@ -32,6 +28,7 @@ type AuthContextValue = {
   signIn: (username: string, pin: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearAuthError: () => void;
+  refreshHousehold: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,6 +43,10 @@ async function loadMemberContext(): Promise<{
   }
 
   const categories = await fetchStarterCategories();
+  setBudgetCycleConfig({
+    startDay: household.budgetCycleStartDay,
+    endDay: household.budgetCycleEndDay,
+  });
   return { household, starterCategoryCount: categories.length };
 }
 
@@ -109,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setHousehold(null);
         setStarterCategoryCount(0);
+        setBudgetCycleConfig({ startDay: 1, endDay: 31 });
         setLoading(false);
       }
     });
@@ -153,11 +155,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       clearAuthError: () => setAuthError(null),
+      refreshHousehold: refreshMemberContext,
     }),
     [
       authError,
       household,
       loading,
+      refreshMemberContext,
       session,
       signIn,
       signOut,

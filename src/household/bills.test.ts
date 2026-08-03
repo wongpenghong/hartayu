@@ -61,9 +61,9 @@ describe("validateBillAmount", () => {
 });
 
 describe("currentPeriodInTokyo", () => {
-  it("returns YYYY-MM in Asia/Tokyo", () => {
-    expect(currentPeriodInTokyo(new Date("2026-07-31T14:00:00Z"))).toBe("2026-07");
-    expect(currentPeriodInTokyo(new Date("2026-07-31T16:00:00Z"))).toBe("2026-08");
+  it("returns the active cycle key in Asia/Tokyo", () => {
+    expect(currentPeriodInTokyo(new Date("2026-08-03T12:00:00+09:00"))).toBe("2026-08");
+    expect(currentPeriodInTokyo(new Date("2026-08-25T12:00:00+09:00"))).toBe("2026-08");
   });
 });
 
@@ -107,6 +107,6 @@ describe("unpaidBillsForPeriod", () => {
 
 describe("billPayNote", () => {
   it("formats the bill name and month label", () => {
-    expect(billPayNote("Rent", 2026, 7)).toBe("Rent Jul 2026");
+    expect(billPayNote("Rent", 2026, 7)).toBe("Rent Jul 2026 · 1 Jul – 31 Jul");
   });
 });

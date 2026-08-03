@@ -1,47 +1,63 @@
 import type { Category } from "@/household/categories";
 import { formatBudgetRowSummary } from "@/household/budget-display";
-import { LimitProgressBar } from "@/components/NativeUI";
+import {
+  budgetGroupTone,
+  budgetProgressTone,
+  type BudgetTone,
+} from "@/household/budget-colors";
+import type { BudgetGroup } from "@/household/budget-groups";
+import { CategoryIcon, LimitProgressBar } from "@/components/NativeUI";
 
 export function BudgetCategoryRow({
   category,
   spentYen,
+  group,
   onEdit,
 }: {
   category: Category;
   spentYen: number;
+  group: BudgetGroup | "other";
   onEdit: (category: Category) => void;
 }) {
   const budgetYen = category.monthly_limit_yen ?? 0;
   const summary = formatBudgetRowSummary(spentYen, budgetYen);
+  const tone: BudgetTone = budgetGroupTone(group);
 
   return (
     <button
       type="button"
       onClick={() => onEdit(category)}
-      className="w-full border-b border-[#ececee] px-4 py-4 text-left last:border-b-0 active:bg-neutral-50 dark:border-neutral-800 dark:active:bg-neutral-800"
+      className={`rounded-2xl p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:opacity-90 ${tone.card}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-[17px] font-medium">{category.name}</span>
-        <span className="text-right">
-          <span className="block text-[15px] tabular-nums text-neutral-600 dark:text-neutral-300">
-            {summary.usage}
-          </span>
-          <span
-            className={`mt-0.5 block text-[15px] font-semibold tabular-nums ${
-              summary.over
-                ? "text-[#ff3b30]"
-                : "text-neutral-700 dark:text-neutral-300"
-            }`}
-          >
-            {summary.remaining}
-          </span>
+      <div className="flex items-center gap-2.5">
+        <CategoryIcon kind={category.kind} emoji={category.emoji} />
+        <span className={`text-[16px] font-semibold ${tone.accent}`}>
+          {category.name}
         </span>
       </div>
+
+      <p className={`mt-3 text-[12px] tabular-nums ${tone.muted}`}>
+        {summary.usage}
+      </p>
+
+      <p className={`mt-3 text-[11px] font-medium uppercase tracking-wide ${tone.muted}`}>
+        Left
+      </p>
+      <p
+        className={`text-[22px] font-bold tabular-nums ${
+          summary.over ? tone.overText : tone.accent
+        }`}
+      >
+        {summary.remaining}
+      </p>
+
       <div className="mt-3">
         <LimitProgressBar
           spentYen={spentYen}
           limitYen={budgetYen}
           highlightOver
+          tone={budgetProgressTone(tone)}
+          showPercent
         />
       </div>
     </button>

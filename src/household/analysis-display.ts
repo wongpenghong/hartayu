@@ -1,10 +1,15 @@
 import type { Entry } from "@/ledger/types";
 import {
-  daysInMonth,
   expenseTotalsByCategory,
   monthlyTotals,
 } from "@/ledger/ledger";
-import { formatMonthLabel, shiftMonth } from "@/lib/format-yen";
+import {
+  budgetCycleDayStats,
+  budgetCycleLabel,
+  budgetCyclePeriodKey,
+  budgetCyclePickerOptions,
+} from "@/lib/budget-cycle";
+import { shiftMonth } from "@/lib/format-yen";
 
 export type AnalysisQuickSummary = {
   avgDailySpendYen: number;
@@ -23,19 +28,13 @@ export type IncomeExpenseMonthPoint = {
   expenseYen: number;
 };
 
-function spendDaysForMonth(
+function spendDaysForCycle(
   year: number,
   month: number,
   today: string,
 ): number {
-  const [todayYear, todayMonth, todayDay] = today.split("-").map(Number);
-  const totalDays = daysInMonth(year, month);
-
-  if (todayYear === year && todayMonth === month) {
-    return Math.max(todayDay, 1);
-  }
-
-  return totalDays;
+  const { daysElapsed, inCycle } = budgetCycleDayStats(year, month, today);
+  return inCycle ? Math.max(daysElapsed, 1) : daysElapsed;
 }
 
 export function analysisQuickSummary(
@@ -45,7 +44,7 @@ export function analysisQuickSummary(
   today: string,
 ): AnalysisQuickSummary {
   const totals = monthlyTotals(entries, year, month);
-  const spendDays = spendDaysForMonth(year, month, today);
+  const spendDays = spendDaysForCycle(year, month, today);
   const topExpense = expenseTotalsByCategory(entries, year, month)[0];
 
   return {
@@ -80,10 +79,10 @@ export function incomeExpenseChartPoints(
   for (let index = 0; index < count; index += 1) {
     const totals = monthlyTotals(entries, year, month);
     points.unshift({
-      id: `${year}-${String(month).padStart(2, "0")}`,
+      id: budgetCyclePeriodKey(year, month),
       year,
       month,
-      label: formatMonthLabel(year, month),
+      label: budgetCycleLabel(year, month),
       incomeYen: totals.incomeYen,
       expenseYen: totals.expenseYen,
     });
@@ -98,20 +97,5 @@ export function monthPickerOptions(
   endMonth: number,
   count = 24,
 ): Array<{ year: number; month: number; label: string; value: string }> {
-  const options: Array<{ year: number; month: number; label: string; value: string }> =
-    [];
-  let year = endYear;
-  let month = endMonth;
-
-  for (let index = 0; index < count; index += 1) {
-    options.push({
-      year,
-      month,
-      label: formatMonthLabel(year, month),
-      value: `${year}-${String(month).padStart(2, "0")}`,
-    });
-    ({ year, month } = shiftMonth(year, month, -1));
-  }
-
-  return options;
+  return budgetCyclePickerOptions(endYear, endMonth, count);
 }

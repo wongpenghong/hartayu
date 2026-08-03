@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { useEntrySheet } from "@/components/EntrySheetProvider";
 import { BillsDueSummary } from "@/components/BillsDueSummary";
+import { HomeGlanceSummary } from "@/components/HomeGlanceSummary";
 import { RemainingBudgetSummary } from "@/components/RemainingBudgetSummary";
 import { PocketsSummary } from "@/components/PocketsSummary";
 import { PortfolioSummary } from "@/components/PortfolioSummary";
@@ -31,9 +32,9 @@ import {
 } from "@/ledger/portfolio";
 import type { Holding, HoldingSnapshot, SnapshotSession } from "@/ledger/portfolio";
 import { activePockets, defaultPocketId, toLedgerPockets } from "@/household/pocket-utils";
-import { netTone } from "@/household/entry-display";
 import {
   balancesByPocket,
+  householdBalance,
   monthlyTotals,
   remainingBudgetByCategory,
 } from "@/ledger/ledger";
@@ -41,7 +42,7 @@ import type { Bill } from "@/ledger/types";
 import { ErrorNote } from "@/components/NativeUI";
 import { useRefreshOnFocus, type RefreshOptions } from "@/hooks/useRefreshOnFocus";
 import { getPageCache, hasPageCache, setPageCache } from "@/lib/page-cache";
-import { currentMonthInTokyo, formatYen } from "@/lib/format-yen";
+import { currentBudgetCycleInTokyo } from "@/lib/budget-cycle";
 
 const HOME_PAGE_CACHE = "home-page";
 
@@ -78,8 +79,14 @@ export default function HomePage() {
   const [loading, setLoading] = useState(!hasPageCache(HOME_PAGE_CACHE));
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const month = useMemo(() => currentMonthInTokyo(), []);
-  const currentPeriod = useMemo(() => currentPeriodInTokyo(), []);
+  const month = useMemo(
+    () => currentBudgetCycleInTokyo(),
+    [household?.budgetCycleEndDay, household?.budgetCycleStartDay],
+  );
+  const currentPeriod = useMemo(
+    () => currentPeriodInTokyo(),
+    [household?.budgetCycleEndDay, household?.budgetCycleStartDay],
+  );
   const unpaidBills = useMemo(
     () => unpaidBillsForPeriod(bills, currentPeriod),
     [bills, currentPeriod],
@@ -100,6 +107,10 @@ export default function HomePage() {
   const activePocketList = useMemo(() => activePockets(pockets), [pockets]);
   const pocketBalances = useMemo(
     () => balancesByPocket(entries, toLedgerPockets(pockets)),
+    [entries, pockets],
+  );
+  const pocketBalanceYen = useMemo(
+    () => householdBalance(entries, toLedgerPockets(pockets)),
     [entries, pockets],
   );
   const portfolioTotalYen = useMemo(
@@ -232,30 +243,7 @@ export default function HomePage() {
         {authError ? <ErrorNote message={authError} /> : null}
         {loadError ? <ErrorNote message={loadError} /> : null}
 
-        <section className="rounded-3xl bg-white p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:bg-neutral-900 dark:shadow-none">
-          <p className="text-[13px] font-medium uppercase tracking-wide text-neutral-500">
-            Net this month
-          </p>
-          <p
-            className={`mt-2 text-[40px] font-bold tracking-tight ${netTone(totals.netYen)}`}
-          >
-            {formatYen(totals.netYen)}
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-[#f2f2f7] px-3 py-3 dark:bg-neutral-800">
-              <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">Income</p>
-              <p className="mt-1 text-[17px] font-semibold text-[#34c759]">
-                {formatYen(totals.incomeYen)}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-[#f2f2f7] px-3 py-3 dark:bg-neutral-800">
-              <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">Expense</p>
-              <p className="mt-1 text-[17px] font-semibold text-[#ff3b30]">
-                {formatYen(totals.expenseYen)}
-              </p>
-            </div>
-          </div>
-        </section>
+        <HomeGlanceSummary totals={totals} pocketBalanceYen={pocketBalanceYen} />
 
         <RemainingBudgetSummary
           rows={budgetRows}

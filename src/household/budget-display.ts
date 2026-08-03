@@ -1,6 +1,13 @@
 import type { BudgetPace } from "@/ledger/types";
 import { formatYen } from "@/lib/format-yen";
-import { formatRemainingBudget } from "@/household/entry-display";
+import { formatRemainingBudget, netTone } from "@/household/entry-display";
+
+export function homeGlanceNetLine(netYen: number): { label: string; toneClass: string } {
+  return {
+    label: `Net this cycle ${formatYen(netYen)}`,
+    toneClass: netTone(netYen),
+  };
+}
 
 export function formatBudgetDayCount(daysLeft: number): string {
   if (daysLeft === 1) {

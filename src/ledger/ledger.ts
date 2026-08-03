@@ -13,6 +13,10 @@ import type {
   SegmentTotal,
 } from "./types";
 import { attributionSegmentId } from "@/household/attribution";
+import {
+  budgetCycleDayStats,
+  entryInBudgetCycle,
+} from "@/lib/budget-cycle";
 import { shiftMonth } from "@/lib/format-yen";
 
 function entryDelta(entry: Entry): number {
@@ -68,8 +72,7 @@ export function entryInMonth(
   year: number,
   month: number,
 ): boolean {
-  const [entryYear, entryMonth] = entry.entryDate.split("-").map(Number);
-  return entryYear === year && entryMonth === month;
+  return entryInBudgetCycle(entry.entryDate, year, month);
 }
 
 export function monthlyTotals(
@@ -396,6 +399,31 @@ export function recentCategoryIds(
   return result;
 }
 
+export function knownMerchants(entries: Entry[], limit = 20): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const entry of sortEntriesNewestFirst(entries)) {
+    const merchant = entry.merchant?.trim();
+    if (!merchant) {
+      continue;
+    }
+
+    const key = merchant.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(merchant);
+    if (result.length >= limit) {
+      break;
+    }
+  }
+
+  return result;
+}
+
 export function groupEntriesByDay(entries: Entry[]): EntryDayGroup[] {
   const groups: EntryDayGroup[] = [];
 
@@ -416,6 +444,19 @@ export function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
+export function pocketDailyPace(
+  pocketBalanceYen: number,
+  year: number,
+  month: number,
+  today: string,
+): { daysLeft: number; dailyAllowanceYen: number } {
+  const { daysLeft } = budgetCycleDayStats(year, month, today);
+  const dailyAllowanceYen =
+    daysLeft > 0 ? Math.floor(pocketBalanceYen / daysLeft) : pocketBalanceYen;
+
+  return { daysLeft, dailyAllowanceYen };
+}
+
 export function budgetPace(
   spentYen: number,
   limitYen: number,
@@ -423,11 +464,11 @@ export function budgetPace(
   month: number,
   today: string,
 ): BudgetPace {
-  const [todayYear, todayMonth, todayDay] = today.split("-").map(Number);
-  const inMonth = todayYear === year && todayMonth === month;
-  const totalDays = daysInMonth(year, month);
-  const daysElapsed = inMonth ? todayDay : totalDays;
-  const daysLeft = inMonth ? Math.max(totalDays - todayDay + 1, 0) : 0;
+  const { totalDays, daysElapsed, daysLeft } = budgetCycleDayStats(
+    year,
+    month,
+    today,
+  );
   const remainingYen = limitYen - spentYen;
   const projectedSpendYen =
     daysElapsed > 0 ? Math.round((spentYen / daysElapsed) * totalDays) : spentYen;

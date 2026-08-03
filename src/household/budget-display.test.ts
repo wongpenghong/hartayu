@@ -7,6 +7,7 @@ import {
   formatBudgetSectionTitle,
   formatBudgetUsage,
   homeBudgetHighlightRows,
+  homeGlanceNetLine,
 } from "@/household/budget-display";
 
 describe("formatBudgetDayCount", () => {
@@ -95,5 +96,14 @@ describe("homeBudgetHighlightRows", () => {
       "b",
       "a",
     ]);
+  });
+});
+
+describe("homeGlanceNetLine", () => {
+  it("formats monthly net as a sub-line", () => {
+    expect(homeGlanceNetLine(-11_292)).toEqual({
+      label: "Net this cycle −¥11,292",
+      toneClass: "text-[#ff3b30]",
+    });
   });
 });

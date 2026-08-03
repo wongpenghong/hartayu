@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/AuthProvider";
+import { formatAuthError } from "@/auth/member-auth";
 import { AssetClassesPanel } from "@/components/AssetClassesPanel";
 import { BillsPanel } from "@/components/BillsPanel";
 import { fetchAssetClasses, type AssetClass } from "@/household/asset-classes";
@@ -15,6 +16,15 @@ import {
 import { type BudgetGroup, BUDGET_GROUP_LABELS, BUDGET_GROUP_ORDER } from "@/household/budget-groups";
 import { fetchBills } from "@/household/bills";
 import { fetchHouseholdMembers, type HouseholdMember } from "@/household/members";
+import { updateBudgetCycle } from "@/household/household";
+import {
+  budgetCycleDateRange,
+  formatBudgetCycleEndDayLabel,
+  formatBudgetCycleLabel,
+  payMonthForDate,
+} from "@/lib/budget-cycle";
+import { LAST_DAY_OF_MONTH, defaultEndDayForStart, normalizeBudgetCycleConfig } from "@/lib/budget-cycle-config";
+import { formatMonthLabel, todayInTokyo } from "@/lib/format-yen";
 import { memberName } from "@/household/member-utils";
 import {
   archivePocket,
@@ -54,6 +64,116 @@ type CategorySheetMode =
   | { kind: "closed" }
   | { kind: "add"; kindFilter: "expense" | "income" }
   | { kind: "edit"; category: Category };
+
+function BudgetCyclePanel() {
+  const { household, refreshHousehold } = useAuth();
+  const [startDay, setStartDay] = useState("1");
+  const [endDay, setEndDay] = useState(String(LAST_DAY_OF_MONTH));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (household) {
+      setStartDay(String(household.budgetCycleStartDay));
+      setEndDay(String(household.budgetCycleEndDay));
+    }
+  }, [household?.budgetCycleEndDay, household?.budgetCycleStartDay]);
+
+  const previewLabel = useMemo(() => {
+    const start = Number(startDay);
+    const end = Number(endDay);
+    if (!Number.isInteger(start) || !Number.isInteger(end)) {
+      return "";
+    }
+
+    const normalized = normalizeBudgetCycleConfig(start, end);
+    const today = todayInTokyo();
+    const { year, month } = payMonthForDate(today, normalized);
+    const { startDate, endDate } = budgetCycleDateRange(year, month, normalized);
+    return `${formatMonthLabel(year, month)} · ${formatBudgetCycleLabel(startDate, endDate)}`;
+  }, [endDay, startDay]);
+
+  async function handleStartChange(value: string) {
+    const start = Number(value);
+    if (!Number.isInteger(start)) {
+      return;
+    }
+    await handleChange(value, String(defaultEndDayForStart(start)));
+  }
+
+  async function handleEndChange(value: string) {
+    await handleChange(startDay, value);
+  }
+
+  async function handleChange(nextStartDay: string, nextEndDay: string) {
+    setStartDay(nextStartDay);
+    setEndDay(nextEndDay);
+    const start = Number(nextStartDay);
+    const end = Number(nextEndDay);
+    if (!household || !Number.isInteger(start) || !Number.isInteger(end)) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      await updateBudgetCycle(household.id, start, end);
+      await refreshHousehold();
+    } catch (caught) {
+      setError(formatAuthError(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <GroupCard title="Budget cycle">
+      <div className="space-y-3 px-4 py-4">
+        <Field label="Start day">
+          <SelectField
+            value={startDay}
+            onChange={(value) => void handleStartChange(value)}
+            disabled={busy || !household}
+          >
+            {Array.from({ length: 28 }, (_, index) => {
+              const day = index + 1;
+              return (
+                <option key={day} value={String(day)}>
+                  {day}
+                </option>
+              );
+            })}
+          </SelectField>
+        </Field>
+        <Field label="End day">
+          <SelectField
+            value={endDay}
+            onChange={(value) => void handleEndChange(value)}
+            disabled={busy || !household}
+          >
+            {Array.from({ length: 30 }, (_, index) => {
+              const day = index + 1;
+              return (
+                <option key={day} value={String(day)}>
+                  {day}
+                </option>
+              );
+            })}
+            <option value={String(LAST_DAY_OF_MONTH)}>
+              {formatBudgetCycleEndDayLabel(LAST_DAY_OF_MONTH)}
+            </option>
+          </SelectField>
+        </Field>
+        {previewLabel ? (
+          <p className="text-[13px] text-neutral-500">
+            Current cycle: {previewLabel}
+          </p>
+        ) : null}
+        {error ? <ErrorNote message={error} /> : null}
+      </div>
+    </GroupCard>
+  );
+}
 
 function PocketsPanel({
   pockets,
@@ -601,6 +721,7 @@ export default function SettingsPage() {
           </Field>
         </div>
       </GroupCard>
+      <BudgetCyclePanel />
       {pageError ? <ErrorNote message={pageError} /> : null}
       {tab === "pockets" ? (
         <PocketsPanel
